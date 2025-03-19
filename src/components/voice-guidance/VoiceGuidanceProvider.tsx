@@ -1,82 +1,156 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
-  initVoiceGuidance,
-  announcePageChange,
-  getVoiceGuidanceStatus,
   speak,
-} from "@/lib/voice-guidance";
+  stopSpeaking,
+  getVoiceGuidanceStatus,
+  updateVoiceSettings,
+  getAvailableVoices
+} from '@/lib/voice-guidance';
 
+// Define the context type
 interface VoiceGuidanceContextType {
   enabled: boolean;
-  toggleGuidance: () => void;
-  announceElement: (text: string) => void;
+  volume: number;
+  rate: number;
+  pitch: number;
+  toggleEnabled: () => void;
+  setVolume: (volume: number) => void;
+  setRate: (rate: number) => void;
+  setPitch: (pitch: number) => void;
+  speak: (text: string, priority?: boolean) => boolean;
+  stop: () => void;
+  availableVoices: SpeechSynthesisVoice[];
+  selectedVoice: SpeechSynthesisVoice | null;
+  setVoice: (voice: SpeechSynthesisVoice | null) => void;
 }
 
-export const VoiceGuidanceContext = createContext<VoiceGuidanceContextType>({
-  enabled: true,
-  toggleGuidance: () => {},
-  announceElement: () => {},
+// Create the context with default values
+const VoiceGuidanceContext = createContext<VoiceGuidanceContextType>({
+  enabled: false,
+  volume: 1,
+  rate: 1,
+  pitch: 1,
+  toggleEnabled: () => {},
+  setVolume: () => {},
+  setRate: () => {},
+  setPitch: () => {},
+  speak: () => false,
+  stop: () => {},
+  availableVoices: [],
+  selectedVoice: null,
+  setVoice: () => {},
 });
 
-export const useVoiceGuidance = () => useContext(VoiceGuidanceContext);
+// Provider component
+export const VoiceGuidanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Get initial state from the voice guidance system
+  const initialStatus = getVoiceGuidanceStatus();
+  
+  const [enabled, setEnabled] = useState(initialStatus.enabled);
+  const [volume, setVolume] = useState(initialStatus.volume);
+  const [rate, setRate] = useState(initialStatus.rate);
+  const [pitch, setPitch] = useState(initialStatus.pitch);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(initialStatus.voice);
 
-interface VoiceGuidanceProviderProps {
-  children: React.ReactNode;
-}
-
-export const VoiceGuidanceProvider = ({
-  children,
-}: VoiceGuidanceProviderProps) => {
-  const [enabled, setEnabled] = useState(true);
-  const location = useLocation();
-
+  // Load available voices
   useEffect(() => {
-    // Initialize voice guidance
-    initVoiceGuidance();
-    setEnabled(getVoiceGuidanceStatus().enabled);
+    setAvailableVoices(getAvailableVoices());
+    
+    // Set up a listener for voice changes
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const handleVoicesChanged = () => {
+        setAvailableVoices(getAvailableVoices());
+      };
+      
+      window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+      
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    }
   }, []);
 
-  // Announce page changes
+  // Update settings when any parameter changes
   useEffect(() => {
-    const pageName = getPageNameFromPath(location.pathname);
-    if (pageName) {
-      announcePageChange(pageName);
-    }
-  }, [location.pathname]);
+    updateVoiceSettings({
+      enabled,
+      volume,
+      rate,
+      pitch,
+      voice: selectedVoice
+    });
+  }, [enabled, volume, rate, pitch, selectedVoice]);
 
-  const toggleGuidance = () => {
-    const newState = !enabled;
-    setEnabled(newState);
-    return newState;
+  // Toggle enabled state
+  const toggleEnabled = () => {
+    const newEnabled = !enabled;
+    setEnabled(newEnabled);
+    
+    if (newEnabled) {
+      speak('Voice guidance enabled', true);
+    }
   };
 
-  const announceElement = (text: string) => {
-    if (enabled) {
-      speak(text);
-    }
+  // Set volume
+  const handleSetVolume = (newVolume: number) => {
+    setVolume(newVolume);
   };
 
-  // Helper function to get a friendly page name from the path
-  const getPageNameFromPath = (path: string): string => {
-    // Remove leading slash and split by remaining slashes
-    const segments = path.replace(/^\//, "").split("/");
-    if (segments[0] === "") return "Home";
+  // Set rate
+  const handleSetRate = (newRate: number) => {
+    setRate(newRate);
+  };
 
-    // Convert kebab-case to spaces and capitalize first letter of each word
-    return segments[0]
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+  // Set pitch
+  const handleSetPitch = (newPitch: number) => {
+    setPitch(newPitch);
+  };
+
+  // Set voice
+  const handleSetVoice = (voice: SpeechSynthesisVoice | null) => {
+    setSelectedVoice(voice);
+  };
+
+  // Speak text
+  const handleSpeak = (text: string, priority = false) => {
+    return speak(text, priority);
+  };
+
+  // Stop speaking
+  const handleStop = () => {
+    stopSpeaking();
+  };
+
+  // Context value
+  const value = {
+    enabled,
+    volume,
+    rate,
+    pitch,
+    toggleEnabled,
+    setVolume: handleSetVolume,
+    setRate: handleSetRate,
+    setPitch: handleSetPitch,
+    speak: handleSpeak,
+    stop: handleStop,
+    availableVoices,
+    selectedVoice,
+    setVoice: handleSetVoice,
   };
 
   return (
-    <VoiceGuidanceContext.Provider
-      value={{ enabled, toggleGuidance, announceElement }}
-    >
+    <VoiceGuidanceContext.Provider value={value}>
       {children}
     </VoiceGuidanceContext.Provider>
   );
 };
 
-export default VoiceGuidanceProvider;
+// Hook to use the voice guidance context
+export const useVoiceGuidance = () => {
+  const context = useContext(VoiceGuidanceContext);
+  if (!context) {
+    throw new Error('useVoiceGuidance must be used within a VoiceGuidanceProvider');
+  }
+  return context;
+};

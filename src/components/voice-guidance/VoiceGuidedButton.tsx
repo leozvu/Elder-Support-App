@@ -1,57 +1,60 @@
-import React, { useRef, useEffect } from "react";
-import { Button, ButtonProps } from "@/components/ui/button";
-import { speak } from "@/lib/voice-guidance";
+import React, { useRef, useEffect } from 'react';
+import { Button, ButtonProps } from '@/components/ui/button';
 import { getVoiceGuidanceStatus } from "@/lib/voice-guidance";
+import { speak } from '@/lib/voice-guidance';
 
 interface VoiceGuidedButtonProps extends ButtonProps {
   description: string;
   priority?: boolean;
-  onFocus?: boolean;
-  onHover?: boolean;
-  onClick?: boolean;
 }
 
-const VoiceGuidedButton = ({
+const VoiceGuidedButton: React.FC<VoiceGuidedButtonProps> = ({
   description,
   priority = false,
-  onFocus = true,
-  onHover = true,
-  onClick = false,
+  onClick,
   children,
   ...props
-}: VoiceGuidedButtonProps) => {
+}) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { enabled } = getVoiceGuidanceStatus();
-
+  
+  // Handle focus event
   useEffect(() => {
-    const element = buttonRef.current;
-    if (!element || !enabled) return;
-
+    const button = buttonRef.current;
+    if (!button) return;
+    
     const handleFocus = () => {
-      if (onFocus) speak(description, priority);
+      const status = getVoiceGuidanceStatus();
+      if (status.enabled) {
+        speak(description, priority);
+      }
     };
-
-    const handleMouseEnter = () => {
-      if (onHover) speak(description, priority);
-    };
-
-    const handleClick = () => {
-      if (onClick) speak(`${description} activated`, priority);
-    };
-
-    if (onFocus) element.addEventListener("focus", handleFocus);
-    if (onHover) element.addEventListener("mouseenter", handleMouseEnter);
-    if (onClick) element.addEventListener("click", handleClick);
-
+    
+    button.addEventListener('focus', handleFocus);
+    
     return () => {
-      if (onFocus) element.removeEventListener("focus", handleFocus);
-      if (onHover) element.removeEventListener("mouseenter", handleMouseEnter);
-      if (onClick) element.removeEventListener("click", handleClick);
+      button.removeEventListener('focus', handleFocus);
     };
-  }, [description, priority, onFocus, onHover, onClick, enabled]);
-
+  }, [description, priority]);
+  
+  // Handle click event
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const status = getVoiceGuidanceStatus();
+    if (status.enabled) {
+      speak(description, priority);
+    }
+    
+    if (onClick) {
+      onClick(e);
+    }
+  };
+  
   return (
-    <Button ref={buttonRef} aria-label={description} {...props}>
+    <Button
+      ref={buttonRef}
+      onClick={handleClick}
+      data-voice-description={description}
+      {...props}
+    >
       {children}
     </Button>
   );

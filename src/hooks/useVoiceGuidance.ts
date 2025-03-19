@@ -4,16 +4,19 @@ import {
   stopSpeaking, 
   updateVoiceSettings, 
   getAvailableVoices,
-  isVoiceGuidanceEnabled
+  isVoiceGuidanceEnabled,
+  getVoiceGuidanceStatus,
+  toggleVoiceGuidance
 } from '@/lib/voice-guidance';
 
 export function useVoiceGuidance() {
-  const [enabled, setEnabled] = useState(isVoiceGuidanceEnabled());
-  const [volume, setVolume] = useState(1);
-  const [rate, setRate] = useState(1);
-  const [pitch, setPitch] = useState(1);
+  const status = getVoiceGuidanceStatus();
+  const [enabled, setEnabled] = useState(status.enabled);
+  const [volume, setVolume] = useState(status.volume);
+  const [rate, setRate] = useState(status.rate);
+  const [pitch, setPitch] = useState(status.pitch);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(status.voice);
 
   // Load available voices
   useEffect(() => {
@@ -57,7 +60,8 @@ export function useVoiceGuidance() {
 
   // Toggle enabled state
   const toggle = useCallback(() => {
-    setEnabled(prev => !prev);
+    const newEnabled = toggleVoiceGuidance();
+    setEnabled(newEnabled);
   }, []);
 
   return {

@@ -5,6 +5,7 @@ import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import { Toaster } from "@/components/ui/toaster";
+import { VoiceGuidanceProvider } from "./components/voice-guidance/VoiceGuidanceProvider";
 
 // Global error handler
 window.addEventListener('error', (event) => {
@@ -16,24 +17,6 @@ window.addEventListener('error', (event) => {
     errors.push({
       message: event.error?.message || 'Unknown error',
       stack: event.error?.stack,
-      timestamp: new Date().toISOString(),
-    });
-    localStorage.setItem('app_errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
-  } catch (e) {
-    console.error('Error logging to localStorage:', e);
-  }
-});
-
-// Unhandled promise rejection handler
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection:', event.reason);
-  
-  // Log to localStorage for debugging
-  try {
-    const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
-    errors.push({
-      message: event.reason?.message || 'Unhandled promise rejection',
-      stack: event.reason?.stack,
       timestamp: new Date().toISOString(),
     });
     localStorage.setItem('app_errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
@@ -58,8 +41,10 @@ try {
     <React.StrictMode>
       <BrowserRouter>
         <AuthProvider>
-          <App />
-          <Toaster />
+          <VoiceGuidanceProvider>
+            <App />
+            <Toaster />
+          </VoiceGuidanceProvider>
         </AuthProvider>
       </BrowserRouter>
     </React.StrictMode>
@@ -87,18 +72,5 @@ try {
         </button>
       </div>
     `;
-  }
-  
-  // Log to localStorage for debugging
-  try {
-    const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
-    errors.push({
-      message: error instanceof Error ? error.message : 'Application initialization error',
-      stack: error instanceof Error ? error.stack : String(error),
-      timestamp: new Date().toISOString(),
-    });
-    localStorage.setItem('app_errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
-  } catch (e) {
-    console.error('Error logging to localStorage:', e);
   }
 }
