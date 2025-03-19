@@ -96,17 +96,22 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         if (localAuthMethod === "local") {
           const localUserStr = localStorage.getItem("senior_assist_user");
           if (localUserStr) {
-            const localUser = JSON.parse(localUserStr);
-            console.log("Found local demo user:", localUser.email);
-            setUserDetails(localUser);
-            setUser(localUser as any);
-            setSession(
-              JSON.parse(
-                localStorage.getItem("senior_assist_session") || "null",
-              ) as any,
-            );
-            setIsLoading(false);
-            return;
+            try {
+              const localUser = JSON.parse(localUserStr);
+              console.log("Found local demo user:", localUser.email);
+              setUserDetails(localUser);
+              setUser(localUser as any);
+              setSession(
+                JSON.parse(
+                  localStorage.getItem("senior_assist_session") || "null",
+                ) as any,
+              );
+              setIsLoading(false);
+              return;
+            } catch (e) {
+              console.error("Error parsing local user:", e);
+              // Continue with normal auth if local auth fails
+            }
           }
         }
 
@@ -188,7 +193,74 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     console.log("Attempting to sign in with email:", email);
     try {
-      // Sign in with the provided credentials
+      // For demo purposes, allow login with demo accounts without Supabase
+      if (email === "martha@example.com" && password === "password123") {
+        const demoUser = {
+          id: "demo-martha",
+          email: "martha@example.com",
+          full_name: "Martha Johnson",
+          role: "customer",
+          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
+          phone: "(555) 123-4567",
+          address: "123 Main St, Anytown, USA",
+        };
+        
+        localStorage.setItem("senior_assist_auth_method", "local");
+        localStorage.setItem("senior_assist_user", JSON.stringify(demoUser));
+        localStorage.setItem("senior_assist_session", JSON.stringify({ user: demoUser }));
+        
+        setUser(demoUser as any);
+        setUserDetails(demoUser);
+        setSession({ user: demoUser } as any);
+        
+        return { error: null, data: { user: demoUser } };
+      }
+      
+      if (email === "helper@example.com" && password === "password123") {
+        const demoUser = {
+          id: "demo-helper",
+          email: "helper@example.com",
+          full_name: "Henry Helper",
+          role: "helper",
+          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Henry",
+          phone: "(555) 987-6543",
+          address: "456 Oak St, Anytown, USA",
+        };
+        
+        localStorage.setItem("senior_assist_auth_method", "local");
+        localStorage.setItem("senior_assist_user", JSON.stringify(demoUser));
+        localStorage.setItem("senior_assist_session", JSON.stringify({ user: demoUser }));
+        
+        setUser(demoUser as any);
+        setUserDetails(demoUser);
+        setSession({ user: demoUser } as any);
+        
+        return { error: null, data: { user: demoUser } };
+      }
+      
+      if (email === "admin@example.com" && password === "password123") {
+        const demoUser = {
+          id: "demo-admin",
+          email: "admin@example.com",
+          full_name: "Admin User",
+          role: "admin",
+          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
+          phone: "(555) 555-5555",
+          address: "789 Pine St, Anytown, USA",
+        };
+        
+        localStorage.setItem("senior_assist_auth_method", "local");
+        localStorage.setItem("senior_assist_user", JSON.stringify(demoUser));
+        localStorage.setItem("senior_assist_session", JSON.stringify({ user: demoUser }));
+        
+        setUser(demoUser as any);
+        setUserDetails(demoUser);
+        setSession({ user: demoUser } as any);
+        
+        return { error: null, data: { user: demoUser } };
+      }
+
+      // Sign in with Supabase for non-demo accounts
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

@@ -17,7 +17,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useNavigate } from "react-router-dom";
 import QuickAccessPanel from "@/components/dashboard/QuickAccessPanel";
+import FloatingMenu from "@/components/navigation/FloatingMenu";
+import { useAuth } from "@/lib/auth";
 
 interface ElderlyDashboardProps {
   userName?: string;
@@ -26,26 +29,21 @@ interface ElderlyDashboardProps {
 }
 
 const ElderlyDashboard = ({
-  userName = "Martha Johnson",
-  userAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
+  userName,
+  userAvatar,
   hasActiveRequest = false,
 }: ElderlyDashboardProps) => {
+  const navigate = useNavigate();
   const [showRequestFlow, setShowRequestFlow] = useState(false);
   const [activeRequest, setActiveRequest] = useState(hasActiveRequest);
+  const { userDetails } = useAuth();
   
-  // Check if simplified navigation is enabled
-  const isSimplifiedNavigation = () => {
-    try {
-      const settings = localStorage.getItem('accessibilitySettings');
-      if (settings) {
-        const parsed = JSON.parse(settings);
-        return parsed.simplifiedNavigation || false;
-      }
-    } catch (e) {
-      console.error('Error checking simplified navigation settings:', e);
-    }
-    return false;
-  };
+  // Use provided values or fall back to user details from auth
+  const displayName = userName || userDetails?.full_name || "Guest";
+  const avatarUrl =
+    userAvatar ||
+    userDetails?.avatar_url ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
 
   const handleServiceSelect = (serviceId: string) => {
     setShowRequestFlow(true);
@@ -61,7 +59,7 @@ const ElderlyDashboard = ({
   };
 
   return (
-    <Layout userName={userName} userAvatar={userAvatar}>
+    <Layout userName={displayName} userAvatar={avatarUrl}>
       <div className="container mx-auto px-4 py-6 space-y-8">
         {/* Main Dashboard Content */}
         {!showRequestFlow ? (
@@ -96,7 +94,7 @@ const ElderlyDashboard = ({
               </div>
               <ServiceRequestCard
                 onServiceSelect={handleServiceSelect}
-                simplified={isSimplifiedNavigation()}
+                simplified={false}
               />
             </section>
 
@@ -278,6 +276,14 @@ const ElderlyDashboard = ({
               </div>
               <QuickAccessPanel role="elderly" />
             </section>
+
+            {/* Fixed SOS Button (Mobile Only) */}
+            <div className="fixed bottom-6 right-6 md:hidden z-10">
+              <SOSButton userRole="customer" />
+            </div>
+            
+            {/* Floating Menu */}
+            <FloatingMenu />
           </>
         ) : (
           <div className="relative">

@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect } from "react";
+import React, { ReactNode, useState } from "react";
 import Header from "./Header";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import {
   HeartPulse,
   Phone,
 } from "lucide-react";
-import AccessibilityControls from "@/components/accessibility/AccessibilityControls";
 import SOSButton from "@/components/emergency/SOSButton";
 import { useAuth } from "@/lib/auth";
 
@@ -34,7 +33,7 @@ const Layout = ({
 }: LayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, userDetails } = useAuth();
+  const { userDetails } = useAuth();
 
   // Use provided values or fall back to user details from auth
   const displayName = userName || userDetails?.full_name || "Guest";
@@ -43,23 +42,6 @@ const Layout = ({
     userDetails?.avatar_url ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
   const userRole = userDetails?.role || "customer";
-
-  // Apply accessibility settings from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem('accessibilitySettings');
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        
-        // Apply settings to document
-        document.documentElement.classList.toggle('high-contrast', parsedSettings.highContrast || false);
-        document.documentElement.classList.toggle('large-text', parsedSettings.largeText || false);
-        document.documentElement.classList.toggle('simplified-nav', parsedSettings.simplifiedNavigation || false);
-      }
-    } catch (error) {
-      console.error('Failed to apply accessibility settings:', error);
-    }
-  }, []);
 
   const navigationItems = [
     { name: "Dashboard", icon: <Home className="h-5 w-5" />, path: "/" },
@@ -150,16 +132,6 @@ const Layout = ({
             ))}
           </nav>
 
-          {/* Accessibility Controls */}
-          <div className="mt-8 border-t pt-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3 px-3">
-              Accessibility
-            </h3>
-            <div className="px-3">
-              <AccessibilityControls />
-            </div>
-          </div>
-
           {/* Emergency SOS Button */}
           {userRole === "customer" && (
             <div className="mt-8 border-t pt-4">
@@ -198,14 +170,6 @@ const Layout = ({
               ))}
             </nav>
 
-            {/* Mobile Accessibility Controls */}
-            <div className="p-4 border-t">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">
-                Accessibility
-              </h3>
-              <AccessibilityControls />
-            </div>
-
             {/* Mobile Emergency Button */}
             {userRole === "customer" && (
               <div className="p-4 border-t">
@@ -222,14 +186,6 @@ const Layout = ({
 
         {/* Main Content */}
         <main className="flex-1" role="main" tabIndex={-1}>
-          {/* Floating SOS button on mobile */}
-          {userRole === "customer" && (
-            <div className="md:hidden fixed bottom-4 right-4 z-50">
-              <SOSButton userRole={userRole} />
-            </div>
-          )}
-
-          {/* Main content */}
           {children}
         </main>
       </div>

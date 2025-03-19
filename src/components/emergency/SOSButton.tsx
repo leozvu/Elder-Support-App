@@ -71,6 +71,11 @@ const SOSButton = ({
     console.log("SOS activated, contacting:", emergencyContacts);
   };
 
+  // Only show SOS button for elderly/customer users
+  if (userRole !== "elderly" && userRole !== "customer") {
+    return null;
+  }
+
   return (
     <>
       <Button
