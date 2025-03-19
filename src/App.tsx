@@ -18,6 +18,7 @@ const Register = React.lazy(() => import("./pages/Register"));
 const Diagnostics = React.lazy(() => import("./pages/Diagnostics"));
 const SupabaseDiagnostic = React.lazy(() => import("./pages/SupabaseDiagnostic"));
 const SystemDiagnostics = React.lazy(() => import("./pages/SystemDiagnostics"));
+const DatabaseDiagnostics = React.lazy(() => import("./pages/DatabaseDiagnostics"));
 
 // Loading component with timeout detection
 const LoadingScreen = ({ timeout = 10000 }) => {
@@ -176,6 +177,16 @@ function App() {
               <ErrorBoundary context="SystemDiagnostics">
                 <Suspense fallback={<LoadingScreen />}>
                   <SystemDiagnostics />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/database-diagnostics" 
+            element={
+              <ErrorBoundary context="DatabaseDiagnostics">
+                <Suspense fallback={<LoadingScreen />}>
+                  <DatabaseDiagnostics />
                 </Suspense>
               </ErrorBoundary>
             } 

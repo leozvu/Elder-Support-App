@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { getUserById, getUserByEmail, isUsingMockData } from "./database";
+import { logError } from "./errorLogging";
 
 // Define types
 interface UserDetails {
@@ -102,20 +104,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(data.session.user);
           }
           
-          // Get user details
+          // Get user details using our database service
           try {
-            const { data: userData, error: userError } = await supabase
-              .from("users")
-              .select("*")
-              .eq("id", data.session.user.id)
-              .single();
+            const userData = await getUserById(data.session.user.id);
               
-            if (userError) {
-              console.error("Error fetching user details:", userError);
+            if (!userData) {
+              console.error("User details not found");
               if (isMounted) {
-                setAuthError(userError);
+                setAuthError(new Error("User details not found"));
               }
-            } else if (userData && isMounted) {
+            } else if (isMounted) {
               setUserDetails(userData);
             }
           } catch (detailsError) {
@@ -139,7 +137,17 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     
-    checkAuth();
+    // Only check Supabase auth if we're not using mock data
+    if (!isUsingMockData()) {
+      checkAuth();
+    } else {
+      // If using mock data, set auth as initialized but not logged in
+      if (isMounted) {
+        setIsLoading(false);
+        setAuthInitialized(true);
+        clearTimeout(loadingTimeout);
+      }
+    }
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -151,16 +159,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (session?.user) {
             try {
-              const { data, error } = await supabase
-                .from("users")
-                .select("*")
-                .eq("id", session.user.id)
-                .single();
+              const userData = await getUserById(session.user.id);
                 
-              if (error) {
-                console.error("Error fetching user details on auth change:", error);
-              } else if (data && isMounted) {
-                setUserDetails(data);
+              if (!userData) {
+                console.error("User details not found on auth change");
+              } else if (isMounted) {
+                setUserDetails(userData);
               }
             } catch (error) {
               console.error("Exception fetching user details on auth change:", error);
@@ -245,6 +249,28 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null, data: { user: demoUser } };
       }
 
+      // If using mock data, handle auth locally
+      if (isUsingMockData()) {
+        // Check if the user exists in our mock data
+        const mockUser = await getUserByEmail(email);
+        
+        if (mockUser && password === "password123") {
+          localStorage.setItem("senior_assist_auth_method", "local");
+          localStorage.setItem("senior_assist_user", JSON.stringify(mockUser));
+          
+          setUser(mockUser);
+          setUserDetails(mockUser);
+          
+          return { error: null, data: { user: mockUser } };
+        } else {
+          return { 
+            error: { 
+              message: "Invalid login credentials" 
+            } 
+          };
+        }
+      }
+
       // Sign in with Supabase for non-demo accounts
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -261,16 +287,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       // Get user details
       if (data.user) {
         try {
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
+          const userData = await getUserById(data.user.id);
             
-          if (userError) {
-            console.error("Error fetching user details after sign in:", userError);
-            setAuthError(userError);
-          } else if (userData) {
+          if (!userData) {
+            console.error("Error fetching user details after sign in: User not found");
+            setAuthError(new Error("User details not found"));
+          } else {
             setUserDetails(userData);
           }
         } catch (error) {
