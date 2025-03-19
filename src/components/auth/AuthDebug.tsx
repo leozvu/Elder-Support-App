@@ -105,26 +105,70 @@ const AuthDebug = () => {
   // Force login with martha@example.com
   const forceLogin = async () => {
     setIsLoading(true);
+    setDebugInfo("Attempting force login with martha@example.com...\n");
     try {
+      // First check Supabase connection
+      setDebugInfo((prev) => prev + "Checking Supabase connection...\n");
+      try {
+        const { data: healthData } = await supabase
+          .from("users")
+          .select("count")
+          .limit(1);
+        setDebugInfo(
+          (prev) =>
+            prev +
+            `Supabase connection check: ${healthData ? "Success" : "Failed"}\n`,
+        );
+      } catch (connError: any) {
+        setDebugInfo(
+          (prev) => prev + `Supabase connection error: ${connError.message}\n`,
+        );
+      }
+
       await supabase.auth.signOut();
+      setDebugInfo((prev) => prev + "Signed out any existing session\n");
 
       // Wait to ensure signOut completes
       await new Promise((resolve) => setTimeout(resolve, 500));
 
+      setDebugInfo((prev) => prev + "Attempting to sign in...\n");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: "martha@example.com",
         password: "password123",
       });
 
       if (error) {
+        setDebugInfo((prev) => prev + `Login failed: ${error.message}\n`);
         alert(`Login failed: ${error.message}`);
         return;
       }
+
+      setDebugInfo((prev) => prev + "Login successful! Redirecting...\n");
+
+      // Use local storage as a fallback mechanism
+      localStorage.setItem("senior_assist_auth_method", "local");
+      localStorage.setItem(
+        "senior_assist_user",
+        JSON.stringify({
+          id: data.user?.id,
+          email: "martha@example.com",
+          full_name: "Martha Johnson",
+          role: "customer",
+          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
+        }),
+      );
+      localStorage.setItem(
+        "senior_assist_session",
+        JSON.stringify(data.session),
+      );
 
       // Navigate to dashboard
       navigate("/");
       window.location.reload();
     } catch (error: any) {
+      setDebugInfo(
+        (prev) => prev + `Exception during login: ${error.message}\n`,
+      );
       alert(`Login failed: ${error.message}`);
     } finally {
       setIsLoading(false);

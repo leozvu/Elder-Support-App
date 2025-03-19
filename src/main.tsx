@@ -4,7 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import NotificationsProvider from "./components/notifications/NotificationsProvider";
-import { AuthProviderComponent } from "./hooks/useAuth.tsx";
+import { AuthProvider } from "./lib/auth";
 import "./lib/i18n";
 import AccessibilityWrapper from "./components/accessibility/AccessibilityWrapper";
 import { VoiceGuidanceProvider } from "./components/voice-guidance/VoiceGuidanceContext";
@@ -30,7 +30,7 @@ setDocumentLanguage();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter basename={basename}>
-      <AuthProviderComponent>
+      <AuthProvider>
         <NotificationsProvider>
           <AccessibilityWrapper>
             <VoiceGuidanceProvider>
@@ -38,7 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             </VoiceGuidanceProvider>
           </AccessibilityWrapper>
         </NotificationsProvider>
-      </AuthProviderComponent>
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

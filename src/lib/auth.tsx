@@ -86,6 +86,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("AuthProvider: Initializing auth state");
     setIsLoading(true);
 
+    // Set a timeout to prevent infinite loading
+    const authTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Auth initialization timed out after 5 seconds");
+        setIsLoading(false);
+      }
+    }, 5000);
+
     // Get current session
     const initializeAuth = async () => {
       try {
@@ -131,6 +139,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Exception during auth initialization:", error);
       } finally {
         setIsLoading(false);
+        clearTimeout(authTimeout);
       }
     };
 
@@ -166,6 +175,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       console.log("AuthProvider: Cleaning up auth subscription");
+      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, []);
