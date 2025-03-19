@@ -44,17 +44,29 @@ function App() {
 
   // Function to determine which dashboard to show based on user role
   const getDashboardComponent = () => {
-    console.log("getDashboardComponent - user:", user?.id);
-    console.log("getDashboardComponent - userDetails:", userDetails);
+    // Use more concise logging with structured data
+    console.log("getDashboardComponent", {
+      userId: user?.id,
+      userRole: userDetails?.role,
+    });
 
     if (!user) {
       console.log("No user, redirecting to login");
-      return <Navigate to="/login" />;
+      return <Navigate to="/login" replace />;
     }
 
     if (userDetails) {
-      console.log("User role:", userDetails.role);
-      switch (userDetails.role) {
+      // Validate user role to prevent security issues
+      const validRoles = ["customer", "helper", "admin"];
+      const role = validRoles.includes(userDetails.role)
+        ? userDetails.role
+        : "customer";
+
+      console.log(
+        `User role: ${role}${role !== userDetails.role ? " (invalid role defaulted)" : ""}`,
+      );
+
+      switch (role) {
         case "customer":
           return <ElderlyDashboard />;
         case "helper":
@@ -62,7 +74,8 @@ function App() {
         case "admin":
           return <HubDashboard />;
         default:
-          console.log("Unknown role, defaulting to elderly dashboard");
+          // This should never execute due to the validation above
+          console.warn("Unknown role, defaulting to elderly dashboard");
           return <ElderlyDashboard />;
       }
     }
@@ -74,27 +87,39 @@ function App() {
 
   // Protected route component
   const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-    const [localTimeout, setLocalTimeout] = useState(false);
-    const [hardTimeout, setHardTimeout] = useState(false);
-    const [showRetryButton, setShowRetryButton] = useState(false);
+    const [authTimeout, setAuthTimeout] = useState<"none" | "soft" | "hard">(
+      "none",
+    );
+    const [timerIds, setTimerIds] = useState<NodeJS.Timeout[]>([]);
 
     useEffect(() => {
+      // Clear any existing timers when component mounts or dependencies change
+      return () => {
+        timerIds.forEach((id) => clearTimeout(id));
+      };
+    }, [timerIds]);
+
+    useEffect(() => {
+      if (!isLoading) return;
+
       // Set a backup timeout in case the auth loading state gets stuck
       const softTimer = setTimeout(() => {
         if (isLoading) {
           console.warn("Soft timeout triggered for protected route");
-          setLocalTimeout(true);
-          setShowRetryButton(true);
+          setAuthTimeout("soft");
         }
-      }, 5000); // Reduced from 12000 to 5000
+      }, 5000);
 
       // Hard timeout - will force redirect regardless of state
       const hardTimer = setTimeout(() => {
         if (isLoading) {
           console.warn("Hard timeout triggered for protected route");
-          setHardTimeout(true);
+          setAuthTimeout("hard");
         }
-      }, 10000); // Force redirect after 10 seconds
+      }, 10000);
+
+      // Store timer IDs for cleanup
+      setTimerIds([softTimer, hardTimer]);
 
       return () => {
         clearTimeout(softTimer);
@@ -102,36 +127,38 @@ function App() {
       };
     }, [isLoading]);
 
-    // Handle manual retry
+    // Handle manual retry - use navigate instead of direct page reload
     const handleRetry = () => {
       console.log("Manual retry initiated");
+      // Reset timeout state
+      setAuthTimeout("none");
+      // Clear existing timers
+      timerIds.forEach((id) => clearTimeout(id));
+      setTimerIds([]);
+      // Reload the page in a more controlled way
       window.location.reload();
     };
 
     // Hard timeout - force redirect to login
-    if (hardTimeout) {
+    if (authTimeout === "hard") {
       console.warn("Hard timeout reached, redirecting to login");
-      return <Navigate to="/login" />;
+      return <Navigate to="/login" state={{ from: "timeout" }} replace />;
     }
 
-    if (isLoading && !localTimeout) {
+    if (isLoading && authTimeout === "none") {
       return (
         <LoadingScreen
           text="Checking authentication..."
           timeout={8000}
-          showRetryButton={showRetryButton}
+          showRetryButton={false} // Don't show retry until soft timeout
           onRetry={handleRetry}
-          onTimeout={() => {
-            console.warn("Authentication check timed out");
-            // Force a redirect to login after timeout
-            window.location.href = "/login";
-          }}
+          onTimeout={() => setAuthTimeout("soft")} // Use the state instead of direct navigation
         />
       );
     }
 
-    // If we hit the local timeout but auth is still loading, show retry option
-    if (localTimeout && isLoading) {
+    // If we hit the soft timeout but auth is still loading, show retry option
+    if (authTimeout === "soft" && isLoading) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
           <div className="text-center max-w-md w-full bg-white p-8 rounded-lg shadow-md">
@@ -160,60 +187,77 @@ function App() {
       );
     }
 
-    if (!user) return <Navigate to="/login" />;
+    if (!user)
+      return <Navigate to="/login" state={{ from: "protected" }} replace />;
     return children;
   };
 
   // Public route component - redirects to dashboard if already logged in
   const PublicRoute = ({ children }: { children: JSX.Element }) => {
-    const [localTimeout, setLocalTimeout] = useState(false);
-    const [showRetryButton, setShowRetryButton] = useState(false);
+    const [authTimeout, setAuthTimeout] = useState(false);
+    const [timerId, setTimerId] = useState<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
+      // Clear any existing timer when component unmounts
+      return () => {
+        if (timerId) clearTimeout(timerId);
+      };
+    }, [timerId]);
+
+    useEffect(() => {
+      if (!isLoading) return;
+
       // Set a backup timeout in case the auth loading state gets stuck
       const timer = setTimeout(() => {
         if (isLoading) {
           console.warn("Backup timeout triggered for public route");
-          setLocalTimeout(true);
-          setShowRetryButton(true);
+          setAuthTimeout(true);
         }
-      }, 5000); // Reduced from 12000 to 5000
+      }, 5000);
+
+      setTimerId(timer);
 
       return () => clearTimeout(timer);
     }, [isLoading]);
 
-    // Handle manual retry
+    // Handle manual retry with more controlled approach
     const handleRetry = () => {
       console.log("Manual retry initiated");
+      // Reset timeout state
+      setAuthTimeout(false);
+      // Clear existing timer
+      if (timerId) clearTimeout(timerId);
+      setTimerId(null);
+      // Reload the page
       window.location.reload();
     };
 
-    if (isLoading && !localTimeout) {
+    if (isLoading && !authTimeout) {
       return (
         <LoadingScreen
           text="Checking authentication..."
           timeout={5000}
-          showRetryButton={showRetryButton}
+          showRetryButton={false} // Only show retry after timeout
           onRetry={handleRetry}
           onTimeout={() => {
             console.warn("Authentication check timed out");
             // Allow proceeding to login page after timeout
-            setLocalTimeout(true);
+            setAuthTimeout(true);
           }}
         />
       );
     }
 
-    // If we hit the local timeout but auth is still loading, show the children anyway
+    // If we hit the timeout but auth is still loading, show the children anyway
     // For public routes, we'll just proceed to the login page
-    if (localTimeout && isLoading) {
+    if (authTimeout && isLoading) {
       console.log(
         "Timeout reached for public route, proceeding to render children",
       );
       return children;
     }
 
-    if (user) return <Navigate to="/" />;
+    if (user) return <Navigate to="/" replace />;
     return children;
   };
 
@@ -224,11 +268,38 @@ function App() {
           text="Loading application..."
           timeout={10000}
           showRetryButton={true}
-          onRetry={() => window.location.reload()}
+          onRetry={() => {
+            // Clear any error state that might be stored in session storage
+            try {
+              sessionStorage.removeItem("app_load_error");
+            } catch (e) {
+              console.error("Failed to clear session storage:", e);
+            }
+            window.location.reload();
+          }}
           onTimeout={() => {
             console.warn("Application loading timed out");
-            // Force a page refresh after a significant timeout
-            window.location.reload();
+            // Store error state to prevent infinite reload loops
+            try {
+              const errorCount = parseInt(
+                sessionStorage.getItem("app_load_error") || "0",
+              );
+              if (errorCount < 3) {
+                sessionStorage.setItem(
+                  "app_load_error",
+                  (errorCount + 1).toString(),
+                );
+                window.location.reload();
+              } else {
+                console.error(
+                  "Multiple reload attempts failed, showing error UI",
+                );
+                // The LoadingScreen will remain visible with retry button
+              }
+            } catch (e) {
+              console.error("Failed to access session storage:", e);
+              window.location.reload();
+            }
           }}
         />
       }
