@@ -7,6 +7,15 @@ import { AuthProvider } from "./lib/auth";
 import { Toaster } from "@/components/ui/toaster";
 import { VoiceGuidanceProvider } from "./components/voice-guidance/VoiceGuidanceProvider";
 import { logError } from "./lib/errorLogging";
+import { initDatabaseService } from "./lib/database";
+
+// Initialize database service
+initDatabaseService().then(success => {
+  console.log(`Database service initialized: ${success ? 'Connected to database' : 'Using mock data'}`);
+}).catch(error => {
+  console.error('Failed to initialize database service:', error);
+  logError(error, 'DatabaseServiceInit');
+});
 
 // Global error handler
 window.addEventListener('error', (event) => {
@@ -78,8 +87,8 @@ function initializeApp() {
           <button onclick="window.location.reload()" style="background-color: #3182ce; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif;">
             Refresh Page
           </button>
-          <button onclick="window.location.href='/system-diagnostics'" style="background-color: #4c1d95; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif; margin-top: 8px;">
-            Run Diagnostics
+          <button onclick="window.location.href='/database-integration-test'" style="background-color: #4c1d95; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif; margin-top: 8px;">
+            Run Database Tests
           </button>
         </div>
       `;
