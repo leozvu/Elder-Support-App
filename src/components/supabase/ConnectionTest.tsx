@@ -1,117 +1,128 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 const ConnectionTest = () => {
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
+  const [testStatus, setTestStatus] = useState<
+    "idle" | "testing" | "success" | "error"
   >("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [testResult, setTestResult] = useState<string | null>(null);
 
-  const recreateUsers = async () => {
+  const testConnection = async () => {
     try {
-      setStatus("loading");
-      setErrorMessage(null);
+      setTestStatus("testing");
+      setTestResult(null);
 
-      // Call the recreate-demo-users edge function
-      const { data, error } = await supabase.functions.invoke(
-        "recreate-demo-users",
-        { method: "POST" },
-      );
+      // Test basic connection to Supabase
+      const { data, error } = await supabase.from("users").select("count", {
+        count: "exact",
+        head: true,
+      });
 
       if (error) {
-        console.error("Error recreating users:", error);
-        setStatus("error");
-        setErrorMessage(`Failed to recreate users: ${error.message}`);
-        toast({
-          variant: "destructive",
-          title: "Error recreating users",
-          description: error.message,
-        });
+        console.error("Connection test failed:", error);
+        setTestStatus("error");
+        setTestResult(`Connection failed: ${error.message}`);
         return;
       }
 
-      // If we got here, the operation was successful
-      setStatus("success");
-      console.log("Users recreated successfully:", data);
-      toast({
-        title: "Success",
-        description: "Demo users have been recreated successfully",
-      });
-
-      // Show credentials
-      setTimeout(() => {
-        toast({
-          title: "Demo Credentials",
-          description:
-            "Senior: martha@example.com / Helper: helper@example.com / Admin: admin@example.com (all use password123)",
-          duration: 10000,
-        });
-      }, 1000);
+      // If we get here, connection was successful
+      setTestStatus("success");
+      setTestResult(
+        `Connection successful! Found ${data?.count || 0} users in database.`,
+      );
     } catch (error: any) {
-      console.error("Connection test failed:", error);
-      setStatus("error");
-      setErrorMessage(error.message || "Unknown error occurred");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
-      });
+      console.error("Connection test error:", error);
+      setTestStatus("error");
+      setTestResult(`Error: ${error.message}`);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between">
-        <Button
-          onClick={recreateUsers}
-          disabled={status === "loading"}
-          className="w-full"
-        >
-          {status === "loading" ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Recreating Users...
-            </>
-          ) : (
-            "Recreate Demo Users"
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>Supabase Connection Test</span>
+          {testStatus !== "idle" && (
+            <Badge
+              variant="outline"
+              className={
+                testStatus === "testing"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : testStatus === "success"
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : "bg-red-50 text-red-700 border-red-200"
+              }
+            >
+              {testStatus === "testing"
+                ? "Testing..."
+                : testStatus === "success"
+                  ? "Connected"
+                  : "Failed"}
+            </Badge>
           )}
-        </Button>
-      </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <p>
+            This simple test will check if your application can connect to your
+            Supabase project.
+          </p>
 
-      {status === "error" && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-          <div className="flex items-start">
-            <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-red-800">Operation Failed</h3>
-              <p className="text-red-700 text-sm mt-1">{errorMessage}</p>
+          <Button
+            onClick={testConnection}
+            disabled={testStatus === "testing"}
+            className="w-full"
+          >
+            {testStatus === "testing" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Testing Connection...
+              </>
+            ) : (
+              "Test Connection"
+            )}
+          </Button>
+
+          {testResult && (
+            <div
+              className={`p-4 rounded-md ${
+                testStatus === "success"
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-red-50 border border-red-200"
+              }`}
+            >
+              <div className="flex items-start">
+                {testStatus === "success" ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
+                )}
+                <p
+                  className={
+                    testStatus === "success" ? "text-green-700" : "text-red-700"
+                  }
+                >
+                  {testResult}
+                </p>
+              </div>
             </div>
+          )}
+
+          <div className="text-sm text-gray-500 mt-4">
+            <p>
+              Note: If the connection test fails, the application will still
+              function using mock data. This allows you to continue development
+              without a working Supabase connection.
+            </p>
           </div>
         </div>
-      )}
-
-      {status === "success" && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-          <div className="flex items-start">
-            <CheckCircle className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-green-800">
-                Users Recreated Successfully
-              </h3>
-              <p className="text-green-700 text-sm mt-1">
-                Demo users have been recreated in your Supabase database. You
-                can now log in with the demo credentials.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

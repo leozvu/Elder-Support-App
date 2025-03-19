@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Phone, Users, Bell, MessageSquare } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertTriangle,
+  Phone,
+  MessageSquare,
+  User,
+  MapPin,
+  Clock,
+} from "lucide-react";
 
 interface EmergencyContact {
   id: string;
@@ -25,380 +25,259 @@ interface EmergencyProtocolProps {
   userId: string;
   userName: string;
   emergencyContacts: EmergencyContact[];
-  onHubAlert?: () => void;
-  onEmergencyServicesCall?: () => void;
-  onContactsAlert?: (contactIds: string[]) => void;
   onCancel?: () => void;
 }
 
-const EmergencyProtocol = ({
+const EmergencyProtocol: React.FC<EmergencyProtocolProps> = ({
   userId,
   userName,
   emergencyContacts,
-  onHubAlert,
-  onEmergencyServicesCall,
-  onContactsAlert,
   onCancel,
-}: EmergencyProtocolProps) => {
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const [emergencyType, setEmergencyType] = useState<string>("medical");
+  const [description, setDescription] = useState<string>("");
+  const [location, setLocation] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [selectedContact, setSelectedContact] = useState<string | null>(null);
 
-  const [activeStep, setActiveStep] = useState<number>(1);
-  const [progress, setProgress] = useState<number>(0);
-  const [hubResponseReceived, setHubResponseReceived] =
-    useState<boolean>(false);
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [escalationTimer, setEscalationTimer] = useState<number>(30); // seconds
-  const [showSafeWordDialog, setShowSafeWordDialog] = useState<boolean>(false);
-  const [safeWord, setSafeWord] = useState<string>("");
-  const [safeWordEntered, setSafeWordEntered] = useState<string>("");
-
-  // Simulate hub response after 5 seconds
-  useEffect(() => {
-    if (activeStep === 1) {
-      const timer = setTimeout(() => {
-        if (Math.random() > 0.3) {
-          // 70% chance of hub response
-          setHubResponseReceived(true);
-          toast({
-            title: t("emergency.hubResponded"),
-            description: t("emergency.hubRespondedDesc"),
-          });
-        }
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [activeStep, t, toast]);
-
-  // Escalation timer
-  useEffect(() => {
-    if (activeStep === 1 && !hubResponseReceived) {
-      const timer = setInterval(() => {
-        setEscalationTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setActiveStep(2); // Move to emergency contacts
-            toast({
-              title: t("emergency.escalating"),
-              description: t("emergency.hubNotResponding"),
-              variant: "destructive",
-            });
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [activeStep, hubResponseReceived, t, toast]);
-
-  // Update progress based on active step
-  useEffect(() => {
-    setProgress(activeStep * 33.33);
-  }, [activeStep]);
-
-  const handleHubAlert = () => {
-    if (onHubAlert) onHubAlert();
-    setActiveStep(1);
-    toast({
-      title: t("emergency.alertSent"),
-      description: t("emergency.hubAlerted"),
-    });
-  };
-
-  const handleEmergencyServicesCall = () => {
-    if (onEmergencyServicesCall) onEmergencyServicesCall();
-    setActiveStep(3);
-    toast({
-      title: t("emergency.emergencyServicesAlerted"),
-      description: t("emergency.emergencyServicesDescription"),
-      variant: "destructive",
-    });
-  };
-
-  const handleContactsAlert = () => {
-    if (selectedContacts.length === 0) {
+  const handleEmergencySubmit = async () => {
+    if (!description) {
       toast({
-        title: t("emergency.selectContacts"),
-        description: t("emergency.pleaseSelectContacts"),
         variant: "destructive",
+        title: t("emergency.descriptionRequired"),
+        description: t("emergency.pleaseProvideDescription"),
       });
       return;
     }
 
-    if (onContactsAlert) onContactsAlert(selectedContacts);
-    setActiveStep(3);
-    toast({
-      title: t("emergency.contactsAlerted"),
-      description: t("emergency.contactsAlertedDesc"),
-    });
-  };
+    setIsSubmitting(true);
 
-  const toggleContactSelection = (contactId: string) => {
-    setSelectedContacts((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId],
-    );
-  };
+    try {
+      // In a real app, this would call an emergency service API
+      // For demo purposes, we'll just simulate a delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-  const handleSafeWordSetup = () => {
-    setShowSafeWordDialog(true);
-  };
-
-  const handleSafeWordSave = () => {
-    if (safeWord.trim().length < 3) {
       toast({
-        title: t("emergency.invalidSafeWord"),
-        description: t("emergency.safeWordTooShort"),
+        title: t("emergency.alertSent"),
+        description: t("emergency.helpOnTheWay"),
+      });
+
+      if (onCancel) {
+        onCancel();
+      }
+    } catch (error) {
+      console.error("Error sending emergency alert:", error);
+      toast({
         variant: "destructive",
+        title: t("emergency.alertFailed"),
+        description: t("emergency.pleaseTryAgain"),
       });
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // In a real app, this would be saved to the user's profile
-    toast({
-      title: t("emergency.safeWordSet"),
-      description: t("emergency.safeWordSetDesc"),
-    });
-    setShowSafeWordDialog(false);
   };
 
-  const handleSafeWordUse = () => {
-    if (safeWordEntered.trim() === safeWord.trim()) {
-      // Trigger silent alert
-      handleHubAlert();
-      toast({
-        title: t("emergency.silentAlertSent"),
-        description: t("emergency.silentAlertDesc"),
-        variant: "default",
-      });
-    } else {
-      toast({
-        title: t("emergency.incorrectSafeWord"),
-        description: t("emergency.tryAgain"),
-        variant: "destructive",
-      });
-    }
+  const handleCallEmergencyServices = () => {
+    // In a real app, this would use a native API to initiate a phone call
+    // For web, we'll just open the dialer with the emergency number
+    window.location.href = "tel:911";
   };
 
   return (
-    <>
-      <Card className="w-full max-w-3xl mx-auto">
-        <CardHeader className="bg-red-50">
-          <CardTitle className="flex items-center gap-2 text-red-700">
-            <AlertTriangle className="h-6 w-6" />
-            {t("emergency.emergencyProtocol")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="mb-6">
-            <Progress value={progress} className="h-2" />
+    <Card className="border-red-200">
+      <CardHeader className="bg-red-50 border-b border-red-200">
+        <CardTitle className="flex items-center gap-2 text-red-700">
+          <AlertTriangle className="h-6 w-6" />
+          {t("emergency.emergencyProtocol")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="space-y-6">
+          <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-6 w-6 text-red-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-red-800">
+                  {t("emergency.emergencySituation")}
+                </h3>
+                <p className="text-red-700 text-sm mt-1">
+                  {t("emergency.useThisForUrgent")}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {activeStep === 1 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-2">
-                  {t("emergency.alertingHub")}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {hubResponseReceived
-                    ? t("emergency.hubRespondedWaiting")
-                    : t("emergency.waitingForHubResponse", {
-                        seconds: escalationTimer,
-                      })}
-                </p>
-
-                {hubResponseReceived ? (
-                  <div className="flex justify-center gap-4">
-                    <Button
-                      variant="default"
-                      className="gap-2"
-                      onClick={() => setActiveStep(3)}
-                    >
-                      <MessageSquare className="h-5 w-5" />
-                      {t("emergency.chatWithHub")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setActiveStep(2)}
-                    >
-                      <Users className="h-5 w-5" />
-                      {t("emergency.alertContacts")}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex justify-center gap-4">
-                    <Button
-                      variant="destructive"
-                      className="gap-2"
-                      onClick={handleEmergencyServicesCall}
-                    >
-                      <Phone className="h-5 w-5" />
-                      {t("emergency.callEmergencyServices")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setActiveStep(2)}
-                    >
-                      <Users className="h-5 w-5" />
-                      {t("emergency.alertContacts")}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeStep === 2 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-2">
-                  {t("emergency.alertEmergencyContacts")}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {t("emergency.selectContactsToAlert")}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {emergencyContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer ${selectedContacts.includes(contact.id) ? "bg-primary/10 border-primary" : ""}`}
-                    onClick={() => toggleContactSelection(contact.id)}
-                  >
-                    <div>
-                      <p className="font-medium">{contact.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {contact.relationship} • {contact.phone}
-                      </p>
-                    </div>
-                    <div className="h-5 w-5 rounded-full border border-primary flex items-center justify-center">
-                      {selectedContacts.includes(contact.id) && (
-                        <div className="h-3 w-3 rounded-full bg-primary"></div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-center gap-4 pt-4">
-                <Button
-                  variant="destructive"
-                  className="gap-2"
-                  onClick={handleEmergencyServicesCall}
-                >
-                  <Phone className="h-5 w-5" />
-                  {t("emergency.callEmergencyServices")}
-                </Button>
-                <Button
-                  variant="default"
-                  className="gap-2"
-                  onClick={handleContactsAlert}
-                >
-                  <Bell className="h-5 w-5" />
-                  {t("emergency.alertSelectedContacts")}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {activeStep === 3 && (
-            <div className="space-y-6 text-center">
-              <AlertTriangle className="h-16 w-16 text-red-500 mx-auto" />
-              <h3 className="text-2xl font-semibold">
-                {t("emergency.helpIsOnTheWay")}
+          <div className="grid gap-4">
+            <div>
+              <h3 className="text-lg font-medium mb-2">
+                {t("emergency.typeOfEmergency")}
               </h3>
-              <p className="text-gray-600">{t("emergency.stayCalm")}</p>
-
-              <div className="pt-4">
-                <Button variant="outline" onClick={onCancel}>
-                  {t("emergency.close")}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={emergencyType === "medical" ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => setEmergencyType("medical")}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  {t("emergency.medical")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={emergencyType === "safety" ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => setEmergencyType("safety")}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  {t("emergency.safety")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={emergencyType === "fall" ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => setEmergencyType("fall")}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  {t("emergency.fall")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={emergencyType === "other" ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => setEmergencyType("other")}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  {t("emergency.other")}
                 </Button>
               </div>
             </div>
-          )}
 
-          <div className="mt-8 pt-4 border-t">
-            <div className="flex justify-between items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSafeWordSetup}
-                className="text-sm text-gray-500"
-              >
-                {t("emergency.setupSafeWord")}
-              </Button>
-
-              {safeWord && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder={t("emergency.enterSafeWord")}
-                    value={safeWordEntered}
-                    onChange={(e) => setSafeWordEntered(e.target.value)}
-                    className="w-40 h-8 text-sm"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSafeWordUse}
-                    className="h-8"
-                  >
-                    {t("emergency.use")}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Dialog open={showSafeWordDialog} onOpenChange={setShowSafeWordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("emergency.setupSafeWord")}</DialogTitle>
-            <DialogDescription>
-              {t("emergency.safeWordExplanation")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t("emergency.safeWord")}</Label>
-              <Input
-                type="text"
-                placeholder={t("emergency.safeWordPlaceholder")}
-                value={safeWord}
-                onChange={(e) => setSafeWord(e.target.value)}
+            <div>
+              <h3 className="text-lg font-medium mb-2">
+                {t("emergency.describeEmergency")}
+              </h3>
+              <Textarea
+                placeholder={t("emergency.describeSituation")}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="min-h-[100px]"
               />
-              <p className="text-sm text-gray-500">
-                {t("emergency.safeWordTip")}
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-2">
+                {t("emergency.yourLocation")}
+              </h3>
+              <div className="flex gap-2">
+                <Input
+                  placeholder={t("emergency.enterLocation")}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="flex-1"
+                />
+                <Button variant="outline" className="flex-shrink-0">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  {t("emergency.useCurrentLocation")}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-2">
+                {t("emergency.contactEmergencyServices")}
+              </h3>
+              <Button
+                variant="destructive"
+                className="w-full py-6 text-lg"
+                onClick={handleCallEmergencyServices}
+              >
+                <Phone className="h-5 w-5 mr-2" />
+                {t("emergency.call911")}
+              </Button>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                {t("emergency.callDirectly")}
               </p>
             </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-2">
+                {t("emergency.notifyContacts")}
+              </h3>
+              <div className="space-y-2">
+                {emergencyContacts.map((contact) => (
+                  <Button
+                    key={contact.id}
+                    variant={
+                      selectedContact === contact.id ? "default" : "outline"
+                    }
+                    className="w-full justify-start"
+                    onClick={() =>
+                      setSelectedContact(
+                        selectedContact === contact.id ? null : contact.id,
+                      )
+                    }
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    <div className="flex flex-col items-start">
+                      <span>{contact.name}</span>
+                      <span className="text-xs opacity-70">
+                        {contact.relationship} • {contact.phone}
+                      </span>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex justify-end gap-4">
+
+          <div className="flex flex-col gap-3 pt-4">
             <Button
-              variant="outline"
-              onClick={() => setShowSafeWordDialog(false)}
+              onClick={handleEmergencySubmit}
+              disabled={isSubmitting}
+              className="py-6 text-lg"
             >
-              {t("common.cancel")}
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                  {t("emergency.sendingAlert")}
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-5 w-5 mr-2" />
+                  {t("emergency.sendEmergencyAlert")}
+                </>
+              )}
             </Button>
-            <Button onClick={handleSafeWordSave}>{t("common.save")}</Button>
+            {onCancel && (
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                {t("common.cancel")}
+              </Button>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+            <div className="flex items-start gap-3">
+              <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-800">
+                  {t("emergency.responseTime")}
+                </h3>
+                <p className="text-amber-700 text-sm mt-1">
+                  {t("emergency.responseTimeDescription")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
-
-const Label = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-    {children}
-  </div>
-);
 
 export default EmergencyProtocol;

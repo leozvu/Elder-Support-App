@@ -1,5 +1,4 @@
-import { supabase } from "./supabase";
-import * as mockData from "./mock-data";
+import { supabase } from "@/lib/supabase";
 import { Tables } from "@/types/supabase";
 
 type Helper = Tables<"helper_profiles"> & {
@@ -8,556 +7,335 @@ type Helper = Tables<"helper_profiles"> & {
   matchScore?: number;
 };
 
-type ServiceRequest = Tables<"service_requests">;
-
-interface MatchingOptions {
-  maxDistance?: number; // in kilometers
-  minRating?: number; // minimum average rating (1-5)
-  prioritizeRating?: boolean; // whether to prioritize rating over distance
-  requiredServices?: string[]; // specific services that must be offered
-  preferredGender?: string; // preferred helper gender if any
-  useAvailability?: boolean; // whether to check helper availability
-  requestDate?: Date; // the date of the service request
-  specificNeeds?: string[]; // specific needs for this request
-  medicalConditions?: string[]; // medical conditions to consider
-  mobilityRestrictions?: boolean; // whether mobility assistance is needed
-  dietaryRequirements?: boolean; // whether dietary knowledge is needed
-  communicationPreferences?: string[]; // preferred communication methods
+interface ServiceRequest {
+  id: string;
+  customer_id: string;
+  service_type: string;
+  status: string;
+  location: string;
+  scheduled_time: string;
+  duration_minutes: number;
+  required_skills?: string[];
+  preferred_language?: string;
 }
 
-// Default matching options
-const defaultOptions: MatchingOptions = {
-  maxDistance: 20, // 20km radius
-  minRating: 3.5, // minimum 3.5 star rating
-  prioritizeRating: false, // distance is default priority
-  useAvailability: true,
-  requiredServices: [], // no specific services required by default
-  preferredGender: undefined, // no gender preference by default
-  requestDate: new Date(), // current date/time by default
-  specificNeeds: [], // no specific needs by default
-  medicalConditions: [], // no medical conditions by default
-  mobilityRestrictions: false, // no mobility restrictions by default
-  dietaryRequirements: false, // no dietary requirements by default
-  communicationPreferences: [], // no communication preferences by default
-};
+interface MatchingOptions {
+  maxDistance?: number;
+  minRating?: number;
+  prioritizeRating?: boolean;
+  requiredServices?: string[];
+  useAvailability?: boolean;
+  requestDate?: Date;
+}
 
-/**
- * Calculate distance between two coordinates using Haversine formula
- * @param lat1 Latitude of first point
- * @param lon1 Longitude of first point
- * @param lat2 Latitude of second point
- * @param lon2 Longitude of second point
- * @returns Distance in kilometers
- */
-export function calculateDistance(
+// Calculate distance between two points using Haversine formula
+const calculateDistance = (
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number,
-): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
+): number => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+  const distance = R * c; // Distance in km
+  return distance;
+};
 
-/**
- * Check if a helper is available at the requested time
- * @param helperId Helper ID to check
- * @param requestDate Date and time of the service request
- * @param durationMinutes Duration of the service in minutes
- * @returns Boolean indicating if helper is available
- */
-async function isHelperAvailable(
-  helperId: string,
-  requestDate: Date,
-  durationMinutes: number = 60,
-): Promise<boolean> {
-  try {
-    // Calculate the end time of the service
-    const requestEndTime = new Date(
-      requestDate.getTime() + durationMinutes * 60000,
-    );
+const deg2rad = (deg: number): number => {
+  return deg * (Math.PI / 180);
+};
 
-    // Check for overlapping service requests
-    const { data, error } = await supabase
-      .from("service_requests")
-      .select("*")
-      .eq("helper_id", helperId)
-      .in("status", ["assigned", "in_progress"]);
-
-    if (error) {
-      console.error("Error checking helper availability:", error);
-      return true; // Assume available if there's an error to not block matching
-    }
-
-    // If no data, the helper is available
-    if (!data || data.length === 0) return true;
-
-    // Check for time conflicts
-    for (const request of data) {
-      const startTime = new Date(request.scheduled_time);
-      const endTime = new Date(
-        startTime.getTime() + (request.duration_minutes || 60) * 60000,
-      );
-
-      // Check if there's an overlap
-      if (
-        (requestDate >= startTime && requestDate < endTime) ||
-        (requestEndTime > startTime && requestEndTime <= endTime) ||
-        (requestDate <= startTime && requestEndTime >= endTime)
-      ) {
-        return false; // Helper is not available
-      }
-    }
-
-    return true; // No conflicts found
-  } catch (error) {
-    console.error("Exception checking helper availability:", error);
-    return true; // Assume available if there's an exception
-  }
-}
-
-/**
- * Calculate match score for a helper based on various factors
- * @param helper Helper profile
- * @param request Service request
- * @param options Matching options
- * @returns Match score between 0-100
- */
-function calculateMatchScore(
+// Calculate match score for a helper
+const calculateMatchScore = (
   helper: Helper,
   request: ServiceRequest,
-  options: MatchingOptions,
-): number {
+  options: MatchingOptions
+): number => {
   let score = 0;
   const maxScore = 100;
-
-  // Distance score (0-20 points) - closer is better
+  
+  // Distance score (25 points max)
   if (helper.distance !== undefined) {
     const maxDistance = options.maxDistance || 20;
-    const distanceScore = Math.max(
-      0,
-      20 - (helper.distance / maxDistance) * 20,
-    );
+    const distanceScore = Math.max(0, 25 - (helper.distance / maxDistance) * 25);
     score += distanceScore;
   } else {
-    // If distance is unknown, give average score
-    score += 10;
+    // If no distance info, give average score
+    score += 12.5;
   }
-
-  // Rating score (0-15 points)
+  
+  // Rating score (20 points max)
   if (helper.average_rating) {
-    const ratingScore = (helper.average_rating / 5) * 15;
+    const ratingScore = (helper.average_rating / 5) * 20;
     score += ratingScore;
   } else {
-    // If no ratings yet, give benefit of doubt with average score
-    score += 7.5;
+    // Default rating score if none available
+    score += 10;
   }
-
-  // Service match score (0-15 points)
-  if (request.service_type && helper.services_offered) {
-    // Check if the helper offers the specific service type
-    const serviceTypeMatch = helper.services_offered.includes(
-      request.service_type,
-    );
-    if (serviceTypeMatch) {
-      score += 15; // Full points for exact service match
+  
+  // Service match score (20 points max)
+  if (helper.services_offered) {
+    if (helper.services_offered.includes(request.service_type)) {
+      score += 20;
     } else {
-      // Partial points based on number of services offered (assuming versatility)
-      const serviceMatchScore = Math.min(
-        7.5,
-        helper.services_offered.length * 1.5,
-      );
-      score += serviceMatchScore;
+      // Partial points for having other services
+      score += Math.min(10, helper.services_offered.length * 2);
     }
   }
-
-  // Experience score based on total reviews (0-10 points)
+  
+  // Experience score (10 points max)
   if (helper.total_reviews) {
-    const experienceScore = Math.min(10, helper.total_reviews / 5);
-    score += experienceScore;
+    score += Math.min(10, helper.total_reviews / 5);
   }
-
-  // Availability score (0-5 points)
-  // This is already handled by filtering out unavailable helpers,
-  // but we can give extra points for helpers who are immediately available
-  if (helper.user && helper.user.last_sign_in_at) {
-    const lastActive = new Date(helper.user.last_sign_in_at);
-    const now = new Date();
-    const hoursSinceActive =
-      (now.getTime() - lastActive.getTime()) / (1000 * 60 * 60);
-
-    if (hoursSinceActive < 1) {
-      score += 5; // Recently active (within the last hour)
-    } else if (hoursSinceActive < 24) {
-      score += 2.5; // Active within the last day
+  
+  // Skills match score (10 points max)
+  if (helper.skills && request.required_skills) {
+    const matchingSkills = helper.skills.filter(skill => 
+      request.required_skills?.includes(skill)
+    );
+    if (matchingSkills.length > 0) {
+      score += Math.min(10, (matchingSkills.length / request.required_skills.length) * 10);
     }
   }
-
-  // Skill match score (0-10 points)
-  if (request.required_skills && helper.skills) {
-    const requiredSkills = Array.isArray(request.required_skills)
-      ? request.required_skills
-      : typeof request.required_skills === "string"
-        ? [request.required_skills]
-        : [];
-
-    if (requiredSkills.length > 0 && helper.skills.length > 0) {
-      const matchedSkills = requiredSkills.filter((skill) =>
-        helper.skills?.includes(skill),
-      );
-
-      const skillMatchScore =
-        (matchedSkills.length / requiredSkills.length) * 10;
-      score += skillMatchScore;
-    }
-  }
-
-  // Language match score (0-5 points)
-  if (request.preferred_language && helper.languages) {
+  
+  // Language match (5 points)
+  if (helper.languages && request.preferred_language) {
     if (helper.languages.includes(request.preferred_language)) {
-      score += 5; // Full points for language match
-    }
-  }
-
-  // NEW: Specific needs match score (0-10 points)
-  if (
-    options.specificNeeds &&
-    options.specificNeeds.length > 0 &&
-    helper.specialized_skills
-  ) {
-    const matchedNeeds = options.specificNeeds.filter((need) =>
-      helper.specialized_skills?.some((skill) =>
-        skill.toLowerCase().includes(need.toLowerCase()),
-      ),
-    );
-
-    const specificNeedsScore =
-      (matchedNeeds.length / options.specificNeeds.length) * 10;
-    score += specificNeedsScore;
-  }
-
-  // NEW: Medical conditions experience score (0-5 points)
-  if (
-    options.medicalConditions &&
-    options.medicalConditions.length > 0 &&
-    helper.experience_with_conditions
-  ) {
-    const matchedConditions = options.medicalConditions.filter((condition) =>
-      helper.experience_with_conditions?.some((exp) =>
-        exp.toLowerCase().includes(condition.toLowerCase()),
-      ),
-    );
-
-    const medicalConditionsScore =
-      (matchedConditions.length / options.medicalConditions.length) * 5;
-    score += medicalConditionsScore;
-  }
-
-  // NEW: Mobility assistance score (0-5 points)
-  if (options.mobilityRestrictions && helper.specialized_skills) {
-    const hasMobilitySkills = helper.specialized_skills.some((skill) =>
-      ["mobility", "transfer", "wheelchair", "walker", "assistance"].some(
-        (keyword) => skill.toLowerCase().includes(keyword),
-      ),
-    );
-
-    if (hasMobilitySkills) {
       score += 5;
     }
   }
-
-  // NEW: Dietary knowledge score (0-5 points)
-  if (options.dietaryRequirements && helper.specialized_skills) {
-    const hasDietarySkills = helper.specialized_skills.some((skill) =>
-      ["diet", "nutrition", "food", "meal", "cooking"].some((keyword) =>
-        skill.toLowerCase().includes(keyword),
-      ),
-    );
-
-    if (hasDietarySkills) {
-      score += 5;
-    }
+  
+  // Availability score (10 points)
+  if (options.useAvailability && helper.availability_hours) {
+    // Simple check - in a real app, this would be more sophisticated
+    score += 10;
   }
+  
+  return Math.min(maxScore, Math.round(score * 10) / 10);
+};
 
-  return Math.min(maxScore, score);
-}
+// Mock data for helpers when Supabase is not available
+const getMockHelpers = (): Helper[] => {
+  return [
+    {
+      id: "helper-1",
+      user: {
+        id: "user-1",
+        full_name: "Sarah Johnson",
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+        email: "sarah@example.com",
+        created_at: new Date().toISOString(),
+      },
+      user_id: "user-1",
+      bio: "Experienced caregiver with 5+ years working with seniors",
+      services_offered: ["shopping", "transport", "companionship"],
+      skills: ["grocery shopping", "heavy lifting", "first aid"],
+      languages: ["en", "es"],
+      average_rating: 4.8,
+      total_reviews: 24,
+      availability_hours: {
+        monday: ["9-17"],
+        tuesday: ["9-17"],
+        wednesday: ["9-17"],
+        thursday: ["9-17"],
+        friday: ["9-17"],
+      },
+      location_lat: 37.7749,
+      location_lng: -122.4194,
+      training_completed: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "helper-2",
+      user: {
+        id: "user-2",
+        full_name: "Michael Chen",
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
+        email: "michael@example.com",
+        created_at: new Date().toISOString(),
+      },
+      user_id: "user-2",
+      bio: "Retired nurse with a passion for helping seniors",
+      services_offered: ["medical", "transport", "shopping"],
+      skills: ["medication management", "vital signs", "first aid"],
+      languages: ["en", "zh"],
+      average_rating: 4.9,
+      total_reviews: 36,
+      availability_hours: {
+        monday: ["8-12"],
+        wednesday: ["8-12"],
+        friday: ["8-12"],
+      },
+      location_lat: 37.7833,
+      location_lng: -122.4167,
+      training_completed: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "helper-3",
+      user: {
+        id: "user-3",
+        full_name: "David Wilson",
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+        email: "david@example.com",
+        created_at: new Date().toISOString(),
+      },
+      user_id: "user-3",
+      bio: "Former physical therapist specializing in senior mobility",
+      services_offered: ["exercise", "transport", "housekeeping"],
+      skills: ["mobility assistance", "exercise planning", "home safety"],
+      languages: ["en"],
+      average_rating: 4.6,
+      total_reviews: 18,
+      availability_hours: {
+        tuesday: ["13-18"],
+        thursday: ["13-18"],
+        saturday: ["10-15"],
+      },
+      location_lat: 37.7935,
+      location_lng: -122.4217,
+      training_completed: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "helper-4",
+      user: {
+        id: "user-4",
+        full_name: "Emily Rodriguez",
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
+        email: "emily@example.com",
+        created_at: new Date().toISOString(),
+      },
+      user_id: "user-4",
+      bio: "Compassionate caregiver with experience in dementia care",
+      services_offered: ["companionship", "shopping", "meal preparation"],
+      skills: ["dementia care", "meal planning", "grocery shopping"],
+      languages: ["en", "es"],
+      average_rating: 4.7,
+      total_reviews: 29,
+      availability_hours: {
+        monday: ["9-17"],
+        tuesday: ["9-17"],
+        wednesday: ["9-17"],
+        thursday: ["9-17"],
+        friday: ["9-17"],
+      },
+      location_lat: 37.7699,
+      location_lng: -122.4269,
+      training_completed: true,
+      created_at: new Date().toISOString(),
+    },
+  ];
+};
 
-/**
- * Find suitable helpers for a service request
- * @param request Service request object or ID
- * @param options Matching options
- * @returns Array of matched helpers sorted by match score
- */
-export async function findMatchingHelpers(
-  request: ServiceRequest | string,
-  options: MatchingOptions = defaultOptions,
-): Promise<Helper[]> {
+// Main function to find matching helpers
+export const findMatchingHelpers = async (
+  request: ServiceRequest,
+  options: MatchingOptions = {}
+): Promise<Helper[]> => {
   try {
-    // Merge options with defaults
-    const matchOptions = { ...defaultOptions, ...options };
-
-    // If request is a string (ID), fetch the full request
-    let serviceRequest: ServiceRequest;
-    if (typeof request === "string") {
-      const { data, error } = await supabase
-        .from("service_requests")
-        .select("*")
-        .eq("id", request)
-        .single();
-
-      if (error || !data) {
-        console.error("Error fetching service request:", error);
-        return [];
-      }
-
-      serviceRequest = data;
-    } else {
-      serviceRequest = request;
-    }
-
-    // Get customer location from address
-    let customerLocation = {
-      latitude: 40.7128, // Default coordinates
-      longitude: -74.006,
-    };
-
-    // Try to get customer location from the database if customer_id exists
-    if (serviceRequest.customer_id) {
-      const { data: customerData, error: customerError } = await supabase
-        .from("users")
-        .select("latitude, longitude")
-        .eq("id", serviceRequest.customer_id)
-        .single();
-
-      if (
-        !customerError &&
-        customerData &&
-        customerData.latitude &&
-        customerData.longitude
-      ) {
-        customerLocation = {
-          latitude: customerData.latitude,
-          longitude: customerData.longitude,
-        };
-      }
-    }
-
-    // If location is provided in the service request, try to geocode it
-    // This would be implemented with a real geocoding service in production
-    if (serviceRequest.location) {
-      // For now, we'll just use the default coordinates
-      // In a real implementation, you would use a geocoding service here
-      console.log(`Would geocode location: ${serviceRequest.location}`);
-    }
-
-    // Fetch all verified helpers
+    // Try to get helpers from Supabase
     const { data: helpers, error } = await supabase
       .from("helper_profiles")
-      .select("*, user:users(*)")
-      .eq("verification_status", "approved");
-
-    if (error || !helpers) {
-      console.error("Error fetching helpers:", error);
-
-      // Fallback to mock data
-      console.log("Using mock helper data");
-      return mockData.mockHelperProfiles as unknown as Helper[];
-    }
-
-    // Process and filter helpers
-    let matchedHelpers: Helper[] = [];
-
-    for (const helper of helpers) {
-      // Skip helpers without location data
-      if (!helper.user || !helper.user.latitude || !helper.user.longitude) {
-        continue;
-      }
-
-      // Calculate distance
-      const distance = calculateDistance(
-        customerLocation.latitude,
-        customerLocation.longitude,
-        helper.user.latitude,
-        helper.user.longitude,
-      );
-
-      // Add distance to helper object
-      helper.distance = distance;
-
-      // Filter by distance
-      if (matchOptions.maxDistance && distance > matchOptions.maxDistance) {
-        continue;
-      }
-
-      // Filter by minimum rating
-      if (
-        matchOptions.minRating &&
-        helper.average_rating &&
-        helper.average_rating < matchOptions.minRating
-      ) {
-        continue;
-      }
-
-      // Filter by required services
-      if (
-        matchOptions.requiredServices &&
-        matchOptions.requiredServices.length > 0 &&
-        helper.services_offered
-      ) {
-        const hasAllRequiredServices = matchOptions.requiredServices.every(
-          (service) => helper.services_offered?.includes(service),
-        );
-
-        if (!hasAllRequiredServices) {
-          continue;
-        }
-      }
-
-      // If service type is specified in the request, prioritize helpers who offer that service
-      if (serviceRequest.service_type && helper.services_offered) {
-        if (!helper.services_offered.includes(serviceRequest.service_type)) {
-          // If the helper doesn't offer the requested service, lower their priority
-          // but don't exclude them completely
-          helper.distance = (helper.distance || 0) * 1.5; // Artificially increase distance to lower priority
-        }
-      }
-
-      // NEW: Check for specific needs match
-      if (
-        serviceRequest.specific_needs &&
-        serviceRequest.specific_needs.length > 0
-      ) {
-        options.specificNeeds = serviceRequest.specific_needs;
-      }
-
-      // NEW: Extract medical conditions from the request or user profile
-      if (serviceRequest.customer_id) {
-        try {
-          // In a real implementation, we would fetch the user's medical conditions
-          // For now, we'll just use a placeholder
-          // const { data: userData } = await supabase
-          //   .from('users')
-          //   .select('medical_conditions')
-          //   .eq('id', serviceRequest.customer_id)
-          //   .single();
-          //
-          // if (userData?.medical_conditions) {
-          //   options.medicalConditions = userData.medical_conditions.split(',').map(c => c.trim());
-          // }
-        } catch (error) {
-          console.error("Error fetching user medical conditions:", error);
-        }
-      }
-
-      // Filter by gender preference if specified
-      if (
-        matchOptions.preferredGender &&
-        helper.user.gender &&
-        helper.user.gender !== matchOptions.preferredGender
-      ) {
-        continue;
-      }
-
-      // Check availability if needed
-      if (matchOptions.useAvailability && matchOptions.requestDate) {
-        const available = await isHelperAvailable(
-          helper.id,
-          matchOptions.requestDate,
-          serviceRequest.duration_minutes,
-        );
-
-        if (!available) {
-          continue;
-        }
-      }
-
-      // Calculate match score
-      helper.matchScore = calculateMatchScore(
-        helper,
-        serviceRequest,
-        matchOptions,
-      );
-
-      // Add to matched helpers
-      matchedHelpers.push(helper);
-    }
-
-    // Sort helpers by match score (descending)
-    matchedHelpers.sort((a, b) => {
-      const scoreA = a.matchScore || 0;
-      const scoreB = b.matchScore || 0;
-      return scoreB - scoreA;
-    });
-
-    return matchedHelpers;
-  } catch (error) {
-    console.error("Error in helper matching algorithm:", error);
-    return [];
-  }
-}
-
-/**
- * Get the best match for a service request
- * @param request Service request object or ID
- * @param options Matching options
- * @returns The best matching helper or null if no matches
- */
-export async function getBestMatchingHelper(
-  request: ServiceRequest | string,
-  options: MatchingOptions = defaultOptions,
-): Promise<Helper | null> {
-  const matches = await findMatchingHelpers(request, options);
-  return matches.length > 0 ? matches[0] : null;
-}
-
-/**
- * Automatically assign the best matching helper to a service request
- * @param requestId Service request ID
- * @param options Matching options
- * @returns Boolean indicating success or failure
- */
-export async function autoAssignHelper(
-  requestId: string,
-  options: MatchingOptions = defaultOptions,
-): Promise<boolean> {
-  try {
-    const bestMatch = await getBestMatchingHelper(requestId, options);
-
-    if (!bestMatch) {
-      console.log("No matching helpers found for request", requestId);
-      return false;
-    }
-
-    // Update the service request with the assigned helper
-    const { error } = await supabase
-      .from("service_requests")
-      .update({
-        helper_id: bestMatch.id,
-        status: "assigned",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", requestId);
+      .select(`
+        *,
+        user:users(*)
+      `)
+      .eq("is_active", true)
+      .order("average_rating", { ascending: false });
 
     if (error) {
-      console.error("Error assigning helper to request:", error);
-      return false;
+      console.error("Error fetching helpers:", error);
+      throw error;
     }
 
-    console.log(
-      `Successfully assigned helper ${bestMatch.id} to request ${requestId} with match score ${bestMatch.matchScore}`,
-    );
-    return true;
+    if (!helpers || helpers.length === 0) {
+      console.warn("No helpers found in database, using mock data");
+      const mockHelpers = getMockHelpers();
+      return processHelpers(mockHelpers, request, options);
+    }
+
+    return processHelpers(helpers as Helper[], request, options);
   } catch (error) {
-    console.error("Error in auto-assigning helper:", error);
-    return false;
+    console.error("Error in findMatchingHelpers:", error);
+    // Fallback to mock data if Supabase fails
+    const mockHelpers = getMockHelpers();
+    return processHelpers(mockHelpers, request, options);
   }
-}
+};
+
+// Process helpers to calculate distances and match scores
+const processHelpers = (
+  helpers: Helper[],
+  request: ServiceRequest,
+  options: MatchingOptions
+): Helper[] => {
+  // Mock request location (would come from geocoding in a real app)
+  const requestLat = 37.7749;
+  const requestLng = -122.4194;
+
+  // Calculate distance for each helper
+  const helpersWithDistance = helpers.map(helper => {
+    let distance: number | undefined = undefined;
+    
+    if (helper.location_lat && helper.location_lng) {
+      distance = calculateDistance(
+        requestLat,
+        requestLng,
+        helper.location_lat,
+        helper.location_lng
+      );
+    }
+    
+    return {
+      ...helper,
+      distance
+    };
+  });
+
+  // Filter by distance if maxDistance is specified
+  let filteredHelpers = helpersWithDistance;
+  if (options.maxDistance) {
+    filteredHelpers = filteredHelpers.filter(
+      helper => !helper.distance || helper.distance <= options.maxDistance!
+    );
+  }
+
+  // Filter by minimum rating if specified
+  if (options.minRating) {
+    filteredHelpers = filteredHelpers.filter(
+      helper => !helper.average_rating || helper.average_rating >= options.minRating!
+    );
+  }
+
+  // Filter by required services if specified
+  if (options.requiredServices && options.requiredServices.length > 0) {
+    filteredHelpers = filteredHelpers.filter(helper => 
+      helper.services_offered && 
+      options.requiredServices!.some(service => 
+        helper.services_offered!.includes(service)
+      )
+    );
+  }
+
+  // Calculate match score for each helper
+  const helpersWithScore = filteredHelpers.map(helper => ({
+    ...helper,
+    matchScore: calculateMatchScore(helper, request, options)
+  }));
+
+  // Sort by match score (descending)
+  return helpersWithScore.sort((a, b) => 
+    (b.matchScore || 0) - (a.matchScore || 0)
+  );
+};
+
+export default findMatchingHelpers;

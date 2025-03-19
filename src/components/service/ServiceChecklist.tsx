@@ -48,12 +48,14 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Load checklist items based on service type
   useEffect(() => {
     const loadChecklist = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         // First try to load existing checklist for this service
         const { data: existingData, error: existingError } = await supabase
@@ -61,6 +63,12 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
           .select("*")
           .eq("service_request_id", serviceId)
           .single();
+
+        if (existingError && existingError.code !== "PGRST116") {
+          // PGRST116 is "no rows returned" error, which is expected if no checklist exists
+          console.error("Error loading existing checklist:", existingError);
+          throw existingError;
+        }
 
         if (existingData) {
           // Parse the items from JSON
@@ -75,6 +83,11 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
           .select("*")
           .eq("service_type", serviceType)
           .single();
+
+        if (templateError && templateError.code !== "PGRST116") {
+          console.error("Error loading template:", templateError);
+          throw templateError;
+        }
 
         if (templateData) {
           // Create items from template
@@ -96,7 +109,10 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
               status: "in_progress",
             });
 
-          if (createError) throw createError;
+          if (createError) {
+            console.error("Error creating checklist:", createError);
+            throw createError;
+          }
         } else {
           // If no template exists, create some default items based on service type
           let defaultItems: ChecklistItem[] = [];
@@ -214,23 +230,41 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
           setItems(defaultItems);
 
           // Create a new checklist record with default items
-          const { error: createError } = await supabase
-            .from("service_checklists")
-            .insert({
-              service_request_id: serviceId,
-              items: defaultItems,
-              status: "in_progress",
-            });
+          try {
+            const { error: createError } = await supabase
+              .from("service_checklists")
+              .insert({
+                service_request_id: serviceId,
+                items: defaultItems,
+                status: "in_progress",
+              });
 
-          if (createError) throw createError;
+            if (createError) {
+              console.error("Error creating default checklist:", createError);
+              // Don't throw here, we'll still show the default items
+            }
+          } catch (insertError) {
+            console.error("Exception creating default checklist:", insertError);
+            // Don't throw here, we'll still show the default items
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error loading checklist:", error);
+        setError(error.message || "Failed to load checklist");
         toast({
           variant: "destructive",
           title: "Failed to load checklist",
-          description: "Please try again later.",
+          description: "Using default checklist items instead.",
         });
+        
+        // Set default items as fallback
+        setItems([
+          { id: "fallback-1", text: "Arrive at location", completed: false },
+          { id: "fallback-2", text: "Discuss service needs", completed: false },
+          { id: "fallback-3", text: "Complete requested tasks", completed: false },
+          { id: "fallback-4", text: "Review completed work", completed: false },
+          { id: "fallback-5", text: "Confirm service completion", completed: false },
+        ]);
       } finally {
         setIsLoading(false);
       }
@@ -279,6 +313,7 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
   // Save checklist
   const saveChecklist = async () => {
     setIsSaving(true);
+    setError(null);
     try {
       const { error } = await supabase
         .from("service_checklists")
@@ -289,18 +324,22 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
         })
         .eq("service_request_id", serviceId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error saving checklist:", error);
+        throw error;
+      }
 
       toast({
         title: "Checklist saved",
         description: "Your service checklist has been updated.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving checklist:", error);
+      setError(error.message || "Failed to save checklist");
       toast({
         variant: "destructive",
         title: "Failed to save checklist",
-        description: "Please try again later.",
+        description: "Your changes have been saved locally but not synced to the server.",
       });
     } finally {
       setIsSaving(false);
@@ -322,6 +361,7 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
     }
 
     setIsSaving(true);
+    setError(null);
     try {
       const { error } = await supabase
         .from("service_checklists")
@@ -332,7 +372,10 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
         })
         .eq("service_request_id", serviceId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error completing service:", error);
+        throw error;
+      }
 
       toast({
         title: "Service completed",
@@ -340,12 +383,13 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
       });
 
       if (onComplete) onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error completing service:", error);
+      setError(error.message || "Failed to complete service");
       toast({
         variant: "destructive",
         title: "Failed to complete service",
-        description: "Please try again later.",
+        description: "Please try again later or contact support if the issue persists.",
       });
     } finally {
       setIsSaving(false);
@@ -379,6 +423,17 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-red-700 flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">Error</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              </div>
+            )}
+
             {/* Progress bar */}
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
@@ -410,7 +465,7 @@ const ServiceChecklist: React.FC<ServiceChecklistProps> = ({
                     {item.completed && item.completedAt && (
                       <div className="flex items-center text-xs text-gray-500">
                         <Clock className="h-3 w-3 mr-1" />
-                        Completed at {item.completedAt.toLocaleTimeString()}
+                        Completed at {new Date(item.completedAt).toLocaleTimeString()}
                       </div>
                     )}
                   </div>
