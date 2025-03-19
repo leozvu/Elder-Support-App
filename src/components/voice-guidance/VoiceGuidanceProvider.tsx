@@ -4,7 +4,11 @@ import {
   stopSpeaking,
   getVoiceGuidanceStatus,
   updateVoiceSettings,
-  getAvailableVoices
+  getAvailableVoices,
+  announcePageChange,
+  announceAction,
+  announceNotification,
+  readFormField
 } from '@/lib/voice-guidance';
 
 // Define the context type
@@ -22,6 +26,10 @@ interface VoiceGuidanceContextType {
   availableVoices: SpeechSynthesisVoice[];
   selectedVoice: SpeechSynthesisVoice | null;
   setVoice: (voice: SpeechSynthesisVoice | null) => void;
+  announcePageChange: (pageName: string) => void;
+  announceAction: (action: string) => void;
+  announceNotification: (title: string, description?: string) => void;
+  readFormField: (label: string, value?: string) => void;
 }
 
 // Create the context with default values
@@ -39,6 +47,10 @@ const VoiceGuidanceContext = createContext<VoiceGuidanceContextType>({
   availableVoices: [],
   selectedVoice: null,
   setVoice: () => {},
+  announcePageChange: () => {},
+  announceAction: () => {},
+  announceNotification: () => {},
+  readFormField: () => {},
 });
 
 // Provider component
@@ -90,6 +102,7 @@ export const VoiceGuidanceProvider: React.FC<{ children: ReactNode }> = ({ child
     if (newEnabled) {
       speak('Voice guidance enabled', true);
     }
+    return newEnabled;
   };
 
   // Set volume
@@ -122,6 +135,31 @@ export const VoiceGuidanceProvider: React.FC<{ children: ReactNode }> = ({ child
     stopSpeaking();
   };
 
+  // Wrapper functions for additional voice guidance features
+  const handleAnnouncePageChange = (pageName: string) => {
+    if (enabled) {
+      announcePageChange(pageName);
+    }
+  };
+
+  const handleAnnounceAction = (action: string) => {
+    if (enabled) {
+      announceAction(action);
+    }
+  };
+
+  const handleAnnounceNotification = (title: string, description?: string) => {
+    if (enabled) {
+      announceNotification(title, description);
+    }
+  };
+
+  const handleReadFormField = (label: string, value?: string) => {
+    if (enabled) {
+      readFormField(label, value);
+    }
+  };
+
   // Context value
   const value = {
     enabled,
@@ -137,6 +175,10 @@ export const VoiceGuidanceProvider: React.FC<{ children: ReactNode }> = ({ child
     availableVoices,
     selectedVoice,
     setVoice: handleSetVoice,
+    announcePageChange: handleAnnouncePageChange,
+    announceAction: handleAnnounceAction,
+    announceNotification: handleAnnounceNotification,
+    readFormField: handleReadFormField
   };
 
   return (

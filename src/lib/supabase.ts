@@ -1,97 +1,137 @@
 import { createClient } from '@supabase/supabase-js';
+import { logError } from './errorLogging';
 
-// Initialize Supabase client with better error handling
+// Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Log configuration issues
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase configuration is missing. Using demo mode.');
-  // Set a flag in localStorage to indicate configuration issues
-  localStorage.setItem('supabaseConfigIssue', 'true');
-}
-
-// Create a custom fetch function with timeout and error handling
-const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
-  // Create an abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-  
-  try {
-    // If we're in demo mode, simulate a successful response
-    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
-      clearTimeout(timeoutId);
-      return new Response(JSON.stringify({ data: null }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    
-    console.error('Supabase fetch error:', error);
-    
-    // Determine if it's a timeout
-    const isTimeout = error.name === 'AbortError';
-    
-    // Return a mock response to prevent crashes
-    return new Response(
-      JSON.stringify({ 
-        error: isTimeout ? 'Request timed out' : 'Network error',
-        details: error.message
-      }), 
-      {
-        status: isTimeout ? 408 : 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  }
-};
-
-// Create the Supabase client with robust error handling
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-  },
-  global: {
-    fetch: customFetch,
-  },
+    detectSessionInUrl: true
+  }
 });
 
-// Test the connection
-export const testSupabaseConnection = async () => {
+/**
+ * Test the connection to Supabase
+ */
+export async function testSupabaseConnection() {
+  const startTime = performance.now();
+  
   try {
-    // If we're in demo mode, return a simulated success
-    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
-      return { success: true, demo: true };
+    // Check if environment variables are set
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return {
+        success: false,
+        message: 'Supabase URL or Anon Key is not defined',
+        timestamp: new Date().toISOString()
+      };
     }
     
-    const start = performance.now();
-    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
-    const end = performance.now();
+    // Test a simple query
+    const { data, error } = await supabase
+      .from('users')
+      .select('count', { count: 'exact', head: true });
+      
+    const endTime = performance.now();
+    const latency = endTime - startTime;
     
     if (error) {
-      console.error('Supabase connection test failed:', error.message);
-      return { success: false, message: error.message, latency: end - start };
+      logError(error, 'SupabaseConnectionTest');
+      return {
+        success: false,
+        message: error.message,
+        latency,
+        timestamp: new Date().toISOString()
+      };
     }
     
-    console.log(`Supabase connection successful! Latency: ${Math.round(end - start)}ms`);
-    return { success: true, latency: end - start };
+    return {
+      success: true,
+      latency,
+      timestamp: new Date().toISOString()
+    };
   } catch (error) {
-    console.error('Exception during Supabase connection test:', error);
-    return { success: false, message: String(error), latency: null };
+    const endTime = performance.now();
+    const latency = endTime - startTime;
+    
+    logError(error, 'SupabaseConnectionTest');
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      latency,
+      timestamp: new Date().toISOString()
+    };
   }
-};
+}
 
-// Run the test immediately
-testSupabaseConnection().then(result => {
-  localStorage.setItem('supabaseConnectionTest', JSON.stringify(result));
-});
+/**
+ * Check if we should use mock data instead of Supabase
+ */
+export function shouldUseMockData() {
+  // Check if we're in development mode
+  const isDev = import.meta.env.DEV;
+  
+  // Check if Supabase connection is disabled
+  const disableMock = localStorage.getItem('disable_mock_data') === 'true';
+  
+  // Check if we have a successful connection test result
+  const connectionTest = localStorage.getItem('supabaseConnectionTest');
+  let isConnected = false;
+  
+  if (connectionTest) {
+    try {
+      const result = JSON.parse(connectionTest);
+      isConnected = result.success;
+    } catch (e) {
+      console.error('Failed to parse connection test result:', e);
+    }
+  }
+  
+  // Use mock data if we're in development and not connected to Supabase
+  // unless mock data is explicitly disabled
+  return isDev && !isConnected && !disableMock;
+}
+
+/**
+ * Create a fallback client that uses mock data
+ */
+export const createFallbackClient = () => {
+  // This is a simplified mock implementation
+  // In a real app, you would implement more sophisticated mocking
+  
+  const mockData = {
+    users: [
+      { id: 'user1', email: 'martha@example.com', full_name: 'Martha Johnson', role: 'customer' },
+      { id: 'user2', email: 'helper@example.com', full_name: 'Helper User', role: 'helper' },
+      { id: 'user3', email: 'admin@example.com', full_name: 'Admin User', role: 'admin' }
+    ]
+  };
+  
+  return {
+    from: (table: string) => ({
+      select: (columns: string) => ({
+        eq: (column: string, value: any) => ({
+          single: () => {
+            const data = mockData[table as keyof typeof mockData]?.find(item => item[column as keyof typeof item] === value);
+            return { data, error: null };
+          }
+        }),
+        data: mockData[table as keyof typeof mockData] || [],
+        error: null
+      })
+    }),
+    auth: {
+      getSession: () => ({ data: { session: null }, error: null }),
+      signInWithPassword: ({ email, password }: { email: string, password: string }) => {
+        const user = mockData.users.find(u => u.email === email);
+        if (user && password === 'password123') {
+          return { data: { user }, error: null };
+        }
+        return { data: null, error: { message: 'Invalid login credentials' } };
+      },
+      signOut: () => ({ error: null })
+    }
+  };
+};
