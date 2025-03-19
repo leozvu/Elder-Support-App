@@ -17,9 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useNavigate } from "react-router-dom";
 import QuickAccessPanel from "@/components/dashboard/QuickAccessPanel";
-import FloatingMenu from "@/components/navigation/FloatingMenu";
 
 interface ElderlyDashboardProps {
   userName?: string;
@@ -32,7 +30,6 @@ const ElderlyDashboard = ({
   userAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
   hasActiveRequest = false,
 }: ElderlyDashboardProps) => {
-  const navigate = useNavigate();
   const [showRequestFlow, setShowRequestFlow] = useState(false);
   const [activeRequest, setActiveRequest] = useState(hasActiveRequest);
   
@@ -281,14 +278,6 @@ const ElderlyDashboard = ({
               </div>
               <QuickAccessPanel role="elderly" />
             </section>
-
-            {/* Fixed SOS Button (Mobile Only) */}
-            <div className="fixed bottom-6 right-6 md:hidden z-10">
-              <SOSButton userRole="elderly" />
-            </div>
-            
-            {/* Floating Menu */}
-            <FloatingMenu />
           </>
         ) : (
           <div className="relative">

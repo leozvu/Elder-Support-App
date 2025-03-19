@@ -16,9 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Sun, Moon, Type, Maximize2, Settings, Volume2, VolumeX } from "lucide-react";
+import { Sun, Moon, Type, Maximize2, Settings } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { speak } from "@/lib/voice-guidance";
 
 export interface AccessibilitySettings {
   highContrast: boolean;
@@ -50,9 +49,15 @@ const AccessibilityControls = ({
   const [simplifiedNavigation, setSimplifiedNavigation] = useState(
     settings.simplifiedNavigation || false,
   );
-  const [voiceEnabled, setVoiceEnabled] = useState(
-    settings.voiceGuidance?.enabled || false,
-  );
+  const [voiceSettings, setVoiceSettings] = useState({
+    enabled: false,
+    volume: 1,
+    rate: 1,
+    pitch: 1,
+    voice: null,
+    autoReadPageContent: false,
+    ...(settings.voiceGuidance || {}),
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { toast } = useToast();
 
@@ -65,7 +70,14 @@ const AccessibilityControls = ({
         setHighContrast(parsedSettings.highContrast || false);
         setLargeText(parsedSettings.largeText || false);
         setSimplifiedNavigation(parsedSettings.simplifiedNavigation || false);
-        setVoiceEnabled(parsedSettings.voiceGuidance?.enabled || false);
+        setVoiceSettings({
+          enabled: parsedSettings.voiceGuidance?.enabled || false,
+          volume: parsedSettings.voiceGuidance?.volume || 1,
+          rate: parsedSettings.voiceGuidance?.rate || 1,
+          pitch: parsedSettings.voiceGuidance?.pitch || 1,
+          voice: null,
+          autoReadPageContent: parsedSettings.voiceGuidance?.autoReadPageContent || false,
+        });
       } catch (error) {
         console.error('Failed to parse accessibility settings:', error);
       }
@@ -77,14 +89,7 @@ const AccessibilityControls = ({
       highContrast,
       largeText,
       simplifiedNavigation,
-      voiceGuidance: {
-        enabled: voiceEnabled,
-        volume: 1,
-        rate: 1,
-        pitch: 1,
-        voice: null,
-        autoReadPageContent: false,
-      },
+      voiceGuidance: voiceSettings,
     };
 
     // Save to localStorage
@@ -98,11 +103,6 @@ const AccessibilityControls = ({
     // Call the callback
     onSettingsChange(updatedSettings);
 
-    // Announce changes if voice guidance is enabled
-    if (voiceEnabled) {
-      speak("Accessibility settings updated");
-    }
-
     // Show toast notification
     toast({
       title: "Accessibility Settings Updated",
@@ -113,45 +113,19 @@ const AccessibilityControls = ({
   const toggleHighContrast = () => {
     const newValue = !highContrast;
     setHighContrast(newValue);
-    setTimeout(() => {
-      updateSettings();
-      if (voiceEnabled) {
-        speak(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`);
-      }
-    }, 0);
+    setTimeout(() => updateSettings(), 0);
   };
 
   const toggleLargeText = () => {
     const newValue = !largeText;
     setLargeText(newValue);
-    setTimeout(() => {
-      updateSettings();
-      if (voiceEnabled) {
-        speak(`Large text mode ${newValue ? 'enabled' : 'disabled'}`);
-      }
-    }, 0);
+    setTimeout(() => updateSettings(), 0);
   };
 
   const toggleSimplifiedNavigation = () => {
     const newValue = !simplifiedNavigation;
     setSimplifiedNavigation(newValue);
-    setTimeout(() => {
-      updateSettings();
-      if (voiceEnabled) {
-        speak(`Simplified navigation ${newValue ? 'enabled' : 'disabled'}`);
-      }
-    }, 0);
-  };
-
-  const toggleVoiceGuidance = () => {
-    const newValue = !voiceEnabled;
-    setVoiceEnabled(newValue);
-    setTimeout(() => {
-      updateSettings();
-      if (newValue) {
-        speak("Voice guidance enabled");
-      }
-    }, 0);
+    setTimeout(() => updateSettings(), 0);
   };
 
   return (
@@ -223,32 +197,6 @@ const AccessibilityControls = ({
           </Tooltip>
         </TooltipProvider>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={voiceEnabled ? "default" : "outline"}
-                size="icon"
-                onClick={toggleVoiceGuidance}
-                aria-label="Toggle voice guidance"
-              >
-                {voiceEnabled ? (
-                  <Volume2 className="h-5 w-5" />
-                ) : (
-                  <VolumeX className="h-5 w-5" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                {voiceEnabled
-                  ? "Disable voice guidance"
-                  : "Enable voice guidance"}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
         <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
           <DialogTrigger asChild>
             <Button
@@ -310,20 +258,6 @@ const AccessibilityControls = ({
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="voice-guidance" className="flex-1">
-                  Voice Guidance
-                </Label>
-                <Switch
-                  id="voice-guidance"
-                  checked={voiceEnabled}
-                  onCheckedChange={(checked) => {
-                    setVoiceEnabled(checked);
-                    setTimeout(() => updateSettings(), 0);
-                  }}
-                />
-              </div>
-
               <div className="pt-2">
                 <Button
                   onClick={() => {
@@ -331,7 +265,14 @@ const AccessibilityControls = ({
                     setHighContrast(false);
                     setLargeText(false);
                     setSimplifiedNavigation(false);
-                    setVoiceEnabled(false);
+                    setVoiceSettings({
+                      enabled: false,
+                      volume: 1,
+                      rate: 1,
+                      pitch: 1,
+                      voice: null,
+                      autoReadPageContent: false,
+                    });
                     setTimeout(() => updateSettings(), 0);
                   }}
                   variant="outline"

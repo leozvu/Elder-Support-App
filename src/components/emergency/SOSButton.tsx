@@ -18,10 +18,10 @@ interface SOSButtonProps {
   onActivate?: () => void;
 }
 
-const SOSButton: React.FC<SOSButtonProps> = ({ 
-  userRole = "customer",
+const SOSButton = ({ 
+  userRole = "elderly",
   onActivate 
-}) => {
+}: SOSButtonProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   
@@ -70,11 +70,6 @@ const SOSButton: React.FC<SOSButtonProps> = ({
     // In a real app, this would trigger emergency protocols
     console.log("SOS activated, contacting:", emergencyContacts);
   };
-
-  // Only show SOS button for elderly/customer users
-  if (userRole !== "elderly" && userRole !== "customer") {
-    return null;
-  }
 
   return (
     <>
