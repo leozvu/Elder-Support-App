@@ -33,9 +33,6 @@
     --ring: 222.2 84% 4.9%;
  
     --radius: 0.5rem;
-    
-    /* Accessibility variables */
-    --font-size-multiplier: 1;
   }
  
   .dark {
@@ -114,7 +111,6 @@
 .high-contrast select,
 .high-contrast textarea {
   border: 2px solid white !important;
-  outline: 2px solid white !important;
 }
 
 .high-contrast button:focus,
@@ -128,59 +124,33 @@
 
 /* Large text mode */
 .large-text {
-  font-size: calc(1rem * var(--font-size-multiplier));
+  font-size: 1.25rem;
 }
 
 .large-text h1 {
-  font-size: calc(2.25rem * var(--font-size-multiplier));
+  font-size: 2.5rem;
 }
 
 .large-text h2 {
-  font-size: calc(1.875rem * var(--font-size-multiplier));
+  font-size: 2rem;
 }
 
 .large-text h3 {
-  font-size: calc(1.5rem * var(--font-size-multiplier));
-}
-
-.large-text h4 {
-  font-size: calc(1.25rem * var(--font-size-multiplier));
-}
-
-.large-text p, 
-.large-text span, 
-.large-text div, 
-.large-text li {
-  font-size: calc(1rem * var(--font-size-multiplier));
+  font-size: 1.75rem;
 }
 
 .large-text button,
-.large-text a,
-.large-text input,
-.large-text select,
-.large-text textarea {
-  font-size: calc(1rem * var(--font-size-multiplier));
-  padding: calc(0.5rem * var(--font-size-multiplier)) calc(0.75rem * var(--font-size-multiplier));
+.large-text a {
+  font-size: 1.25rem;
+  padding: 0.75rem 1.25rem;
 }
 
 /* Simplified navigation mode */
 .simplified-nav button,
-.simplified-nav a,
-.simplified-nav input,
-.simplified-nav select,
-.simplified-nav textarea {
+.simplified-nav a {
   margin: 0.5rem 0;
   padding: 0.75rem;
   border-radius: 0.5rem;
-}
-
-.simplified-nav button:focus,
-.simplified-nav a:focus,
-.simplified-nav input:focus,
-.simplified-nav select:focus,
-.simplified-nav textarea:focus {
-  outline: 3px solid hsl(var(--primary));
-  outline-offset: 2px;
 }
 
 /* Screen reader only content */

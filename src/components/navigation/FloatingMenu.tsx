@@ -14,33 +14,43 @@ import {
   HeartPulse,
   Phone
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAccessibility } from '@/components/accessibility/AccessibilityContext';
-import { useAuth } from '@/lib/auth';
 import VoiceGuidedElement from '@/components/voice-guidance/VoiceGuidedElement';
+import { useAuth } from '@/lib/auth';
 
 const FloatingMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { settings } = useAccessibility();
   const { userDetails } = useAuth();
   const userRole = userDetails?.role || 'customer';
 
+  // Check if large text mode is enabled
+  const isLargeText = () => {
+    try {
+      const settings = localStorage.getItem('accessibilitySettings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        return parsed.largeText || false;
+      }
+    } catch (e) {
+      console.error('Error checking large text settings:', e);
+    }
+    return false;
+  };
+
   const menuItems = [
     { name: 'Home', icon: <Home className="h-5 w-5" />, path: '/' },
-    { name: 'Request', icon: <Calendar className="h-5 w-5" />, path: '/request' },
+    { name: 'Request', icon: <Calendar className="h-5 w-5" />, path: '/request', roles: ['customer'] },
     { name: 'Hubs', icon: <Map className="h-5 w-5" />, path: '/hub-finder' },
-    { name: 'Medications', icon: <Pill className="h-5 w-5" />, path: '/medications' },
-    { name: 'Wellness', icon: <HeartPulse className="h-5 w-5" />, path: '/wellness' },
-    { name: 'Emergency', icon: <Phone className="h-5 w-5" />, path: '/emergency-contacts' },
+    { name: 'Medications', icon: <Pill className="h-5 w-5" />, path: '/medications', roles: ['customer'] },
+    { name: 'Wellness', icon: <HeartPulse className="h-5 w-5" />, path: '/wellness', roles: ['customer'] },
+    { name: 'Emergency', icon: <Phone className="h-5 w-5" />, path: '/emergency-contacts', roles: ['customer'] },
     { name: 'Profile', icon: <User className="h-5 w-5" />, path: '/profile' },
     { name: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings' },
   ];
 
   // Filter menu items based on user role
-  const filteredMenuItems = menuItems.filter(item => {
-    if (item.name === 'Request' && userRole === 'admin') return false;
-    return true;
-  });
+  const filteredMenuItems = menuItems.filter(item => 
+    !item.roles || item.roles.includes(userRole)
+  );
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -60,36 +70,29 @@ const FloatingMenu = () => {
         </Button>
       </VoiceGuidedElement>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-20 left-0"
-          >
-            <div className="bg-white rounded-lg shadow-lg p-4 grid grid-cols-4 gap-2 w-[280px]">
-              {filteredMenuItems.map((item) => (
-                <VoiceGuidedElement 
-                  key={item.name}
-                  description={`${item.name} menu item`}
+      {isOpen && (
+        <div className="absolute bottom-20 left-0">
+          <div className="bg-white rounded-lg shadow-lg p-4 grid grid-cols-4 gap-2 w-[280px]">
+            {filteredMenuItems.map((item) => (
+              <VoiceGuidedElement 
+                key={item.name}
+                description={`${item.name} menu item`}
+              >
+                <Link
+                  to={item.path}
+                  className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100"
+                  onClick={() => setIsOpen(false)}
                 >
-                  <Link
-                    to={item.path}
-                    className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <div className="bg-primary/10 p-2 rounded-full mb-1">
-                      {item.icon}
-                    </div>
-                    <span className={`text-xs ${settings.largeText ? 'text-sm' : ''}`}>{item.name}</span>
-                  </Link>
-                </VoiceGuidedElement>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  <div className="bg-primary/10 p-2 rounded-full mb-1">
+                    {item.icon}
+                  </div>
+                  <span className={`text-xs ${isLargeText() ? 'text-sm' : ''}`}>{item.name}</span>
+                </Link>
+              </VoiceGuidedElement>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

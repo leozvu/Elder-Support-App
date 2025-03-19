@@ -1,8 +1,18 @@
 // Voice guidance system for accessibility
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Initialize speech synthesis
 let speechSynthesis: SpeechSynthesis | null = null;
 let availableVoices: SpeechSynthesisVoice[] = [];
-let currentSettings = {
+
+if (isBrowser && 'speechSynthesis' in window) {
+  speechSynthesis = window.speechSynthesis;
+}
+
+// Current voice settings
+const currentSettings = {
   enabled: false,
   volume: 1,
   rate: 1,
@@ -11,40 +21,50 @@ let currentSettings = {
   autoReadPageContent: false,
 };
 
+/**
+ * Initialize the voice guidance system
+ */
 export function initVoiceGuidance() {
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    speechSynthesis = window.speechSynthesis;
-    
-    // Load available voices
-    const loadVoices = () => {
-      availableVoices = speechSynthesis?.getVoices() || [];
-      console.log('Available voices loaded:', availableVoices.length);
-    };
-
-    // Chrome loads voices asynchronously
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = loadVoices;
-    }
-    
-    loadVoices();
-    return true;
+  if (!isBrowser || !speechSynthesis) {
+    console.warn('Speech synthesis not supported in this browser');
+    return false;
   }
   
-  console.warn('Speech synthesis not supported in this browser');
-  return false;
+  // Load available voices
+  const loadVoices = () => {
+    availableVoices = speechSynthesis.getVoices();
+    console.log('Available voices loaded:', availableVoices.length);
+  };
+
+  // Chrome loads voices asynchronously
+  if (speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+  
+  loadVoices();
+  return true;
 }
 
+/**
+ * Update voice settings
+ */
 export function updateVoiceSettings(settings: Partial<typeof currentSettings>) {
-  currentSettings = { ...currentSettings, ...settings };
+  Object.assign(currentSettings, settings);
   return currentSettings;
 }
 
+/**
+ * Get available voices
+ */
 export function getAvailableVoices() {
   return availableVoices;
 }
 
+/**
+ * Speak text using the speech synthesis API
+ */
 export function speak(text: string, priority = false) {
-  if (!speechSynthesis || !currentSettings.enabled) return false;
+  if (!isBrowser || !speechSynthesis || !currentSettings.enabled) return false;
   
   // Cancel current speech if this is a priority message
   if (priority && speechSynthesis.speaking) {
@@ -74,24 +94,35 @@ export function speak(text: string, priority = false) {
   }
 }
 
+/**
+ * Stop speaking
+ */
 export function stopSpeaking() {
-  if (!speechSynthesis) return;
+  if (!isBrowser || !speechSynthesis) return;
   speechSynthesis.cancel();
 }
 
+/**
+ * Announce page change
+ */
 export function announcePageChange(pageName: string) {
   speak(`Navigated to ${pageName} page`, true);
 }
 
-export function readElement(element: HTMLElement) {
-  if (!element) return;
-  
-  const text = element.textContent || '';
-  if (text.trim()) {
-    speak(text);
-  }
+/**
+ * Check if voice guidance is enabled
+ */
+export function isVoiceGuidanceEnabled() {
+  return currentSettings.enabled;
 }
 
-export function isVoiceGuidanceEnabled() {
+/**
+ * Toggle voice guidance
+ */
+export function toggleVoiceGuidance() {
+  currentSettings.enabled = !currentSettings.enabled;
+  if (currentSettings.enabled) {
+    speak('Voice guidance enabled', true);
+  }
   return currentSettings.enabled;
 }

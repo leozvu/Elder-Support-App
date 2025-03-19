@@ -1,6 +1,6 @@
-import React, { ReactNode, useState, useEffect, useRef } from "react";
+import React, { ReactNode, useState, useEffect } from "react";
 import Header from "./Header";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -10,9 +10,6 @@ import {
   Settings,
   User,
   Menu,
-  Volume2,
-  Bell,
-  Phone,
   Pill,
   Heart,
   HeartPulse,
@@ -20,18 +17,13 @@ import {
   Eye,
   AlertTriangle,
   MessageSquare,
+  Phone,
 } from "lucide-react";
 import AccessibilityControls from "@/components/accessibility/AccessibilityControls";
-import HighContrastMode from "@/components/accessibility/HighContrastMode";
-import LargeTextMode from "@/components/accessibility/LargeTextMode";
-import SimplifiedNavigation from "@/components/accessibility/SimplifiedNavigation";
 import SOSButton from "@/components/emergency/SOSButton";
-import { useAccessibility } from "@/components/accessibility/AccessibilityContext";
-import FloatingMenu from "@/components/navigation/FloatingMenu";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ChatInterface from "@/components/communication/ChatInterface";
-import VoiceGuidanceSettings from "@/components/voice-guidance/VoiceGuidanceSettings";
 import VoiceGuidedElement from "@/components/voice-guidance/VoiceGuidedElement";
 import { speak, announcePageChange } from "@/lib/voice-guidance";
 import { useAuth } from "@/lib/auth";
@@ -50,11 +42,9 @@ const Layout = ({
   showFloatingMenu = true,
 }: LayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { settings } = useAccessibility();
-  const { toast } = useToast();
-  const location = useLocation();
   const [showEmergencyChat, setShowEmergencyChat] = useState(false);
-  const emergencyChatButtonRef = useRef<HTMLButtonElement>(null);
+  const location = useLocation();
+  const { toast } = useToast();
   const { user, userDetails } = useAuth();
 
   // Use provided values or fall back to user details from auth
@@ -65,13 +55,27 @@ const Layout = ({
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
   const userRole = userDetails?.role || "customer";
 
+  // Check if voice guidance is enabled
+  const isVoiceEnabled = () => {
+    try {
+      const settings = localStorage.getItem('accessibilitySettings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        return parsed.voiceGuidance?.enabled || false;
+      }
+    } catch (e) {
+      console.error('Error checking voice guidance settings:', e);
+    }
+    return false;
+  };
+
   // Announce page changes for voice guidance
   useEffect(() => {
-    if (settings.voiceGuidance.enabled) {
+    if (isVoiceEnabled()) {
       const pageName = getPageNameFromPath(location.pathname);
       announcePageChange(pageName);
     }
-  }, [location.pathname, settings.voiceGuidance.enabled]);
+  }, [location.pathname]);
 
   // Helper function to get a friendly page name from the path
   const getPageNameFromPath = (path: string): string => {
@@ -92,17 +96,20 @@ const Layout = ({
       name: "Request Service",
       icon: <Calendar className="h-5 w-5" />,
       path: "/request",
+      roles: ["customer"],
     },
     { name: "Nearby Hubs", icon: <Map className="h-5 w-5" />, path: "/hub-finder" },
     {
       name: "Medications",
       icon: <Pill className="h-5 w-5" />,
       path: "/medications",
+      roles: ["customer"],
     },
     {
       name: "Wellness",
       icon: <HeartPulse className="h-5 w-5" />,
       path: "/wellness",
+      roles: ["customer"],
     },
     {
       name: "Community Events",
@@ -120,6 +127,7 @@ const Layout = ({
       name: "Emergency Contacts",
       icon: <Phone className="h-5 w-5" />,
       path: "/emergency-contacts",
+      roles: ["customer"],
     },
     {
       name: "Settings",
@@ -135,6 +143,34 @@ const Layout = ({
 
   const handleMenuToggle = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // Check if high contrast mode is enabled
+  const isHighContrast = () => {
+    try {
+      const settings = localStorage.getItem('accessibilitySettings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        return parsed.highContrast || false;
+      }
+    } catch (e) {
+      console.error('Error checking high contrast settings:', e);
+    }
+    return false;
+  };
+
+  // Check if large text mode is enabled
+  const isLargeText = () => {
+    try {
+      const settings = localStorage.getItem('accessibilitySettings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        return parsed.largeText || false;
+      }
+    } catch (e) {
+      console.error('Error checking large text settings:', e);
+    }
+    return false;
   };
 
   return (
@@ -157,15 +193,30 @@ const Layout = ({
           priority={true}
         >
           <Button
-            variant={settings.highContrast ? "default" : "outline"}
+            variant={isHighContrast() ? "default" : "outline"}
             size="icon"
             onClick={() => {
-              const newValue = !settings.highContrast;
-              const { updateSettings } = useAccessibility();
-              updateSettings({ highContrast: newValue });
-              
-              if (settings.voiceGuidance.enabled) {
-                speak(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`);
+              try {
+                const settings = localStorage.getItem('accessibilitySettings');
+                if (settings) {
+                  const parsed = JSON.parse(settings);
+                  const newValue = !parsed.highContrast;
+                  parsed.highContrast = newValue;
+                  localStorage.setItem('accessibilitySettings', JSON.stringify(parsed));
+                  
+                  // Apply setting to document
+                  document.documentElement.classList.toggle('high-contrast', newValue);
+                  
+                  // Announce change
+                  if (isVoiceEnabled()) {
+                    speak(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`);
+                  }
+                  
+                  // Force re-render
+                  window.dispatchEvent(new Event('storage'));
+                }
+              } catch (e) {
+                console.error('Error toggling high contrast:', e);
               }
             }}
             aria-label="Toggle high contrast mode"
@@ -180,15 +231,30 @@ const Layout = ({
           priority={true}
         >
           <Button
-            variant={settings.largeText ? "default" : "outline"}
+            variant={isLargeText() ? "default" : "outline"}
             size="icon"
             onClick={() => {
-              const newValue = !settings.largeText;
-              const { updateSettings } = useAccessibility();
-              updateSettings({ largeText: newValue });
-              
-              if (settings.voiceGuidance.enabled) {
-                speak(`Large text mode ${newValue ? 'enabled' : 'disabled'}`);
+              try {
+                const settings = localStorage.getItem('accessibilitySettings');
+                if (settings) {
+                  const parsed = JSON.parse(settings);
+                  const newValue = !parsed.largeText;
+                  parsed.largeText = newValue;
+                  localStorage.setItem('accessibilitySettings', JSON.stringify(parsed));
+                  
+                  // Apply setting to document
+                  document.documentElement.classList.toggle('large-text', newValue);
+                  
+                  // Announce change
+                  if (isVoiceEnabled()) {
+                    speak(`Large text mode ${newValue ? 'enabled' : 'disabled'}`);
+                  }
+                  
+                  // Force re-render
+                  window.dispatchEvent(new Event('storage'));
+                }
+              } catch (e) {
+                console.error('Error toggling large text:', e);
               }
             }}
             aria-label="Toggle large text mode"
@@ -198,24 +264,23 @@ const Layout = ({
           </Button>
         </VoiceGuidedElement>
 
-        <VoiceGuidanceSettings className="mt-2" />
-
         {/* Emergency Chat Button */}
-        <VoiceGuidedElement
-          description="Emergency chat with hub"
-          priority={true}
-        >
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={() => setShowEmergencyChat(true)}
-            aria-label="Emergency chat with hub"
-            title="Emergency chat with hub"
-            ref={emergencyChatButtonRef}
+        {userRole === "customer" && (
+          <VoiceGuidedElement
+            description="Emergency chat with hub"
+            priority={true}
           >
-            <AlertTriangle className="h-4 w-4" />
-          </Button>
-        </VoiceGuidedElement>
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={() => setShowEmergencyChat(true)}
+              aria-label="Emergency chat with hub"
+              title="Emergency chat with hub"
+            >
+              <AlertTriangle className="h-4 w-4" />
+            </Button>
+          </VoiceGuidedElement>
+        )}
       </div>
 
       <div className="flex flex-1">
@@ -237,7 +302,7 @@ const Layout = ({
                   }
                 >
                   {item.icon}
-                  <span className={`${settings.largeText ? "text-xl" : "text-lg"}`}>{item.name}</span>
+                  <span className={`${isLargeText() ? "text-xl" : "text-lg"}`}>{item.name}</span>
                 </Link>
               </VoiceGuidedElement>
             ))}
@@ -245,7 +310,7 @@ const Layout = ({
 
           {/* Accessibility Controls */}
           <div className="mt-8 border-t pt-4">
-            <h3 className={`text-sm font-medium text-gray-500 mb-3 px-3 ${settings.largeText ? "text-base" : ""}`}>
+            <h3 className={`text-sm font-medium text-gray-500 mb-3 px-3 ${isLargeText() ? "text-base" : ""}`}>
               Accessibility
             </h3>
             <div className="px-3">
@@ -256,7 +321,7 @@ const Layout = ({
           {/* Emergency SOS Button */}
           {userRole === "customer" && (
             <div className="mt-8 border-t pt-4">
-              <h3 className={`text-sm font-medium text-gray-500 mb-3 px-3 ${settings.largeText ? "text-base" : ""}`}>
+              <h3 className={`text-sm font-medium text-gray-500 mb-3 px-3 ${isLargeText() ? "text-base" : ""}`}>
                 Emergency
               </h3>
               <div className="flex justify-center">
@@ -294,7 +359,7 @@ const Layout = ({
                     }
                   >
                     {item.icon}
-                    <span className={`${settings.largeText ? "text-xl" : "text-lg"}`}>{item.name}</span>
+                    <span className={`${isLargeText() ? "text-xl" : "text-lg"}`}>{item.name}</span>
                   </Link>
                 </VoiceGuidedElement>
               ))}
@@ -302,7 +367,7 @@ const Layout = ({
 
             {/* Mobile Accessibility Controls */}
             <div className="p-4 border-t">
-              <h3 className={`text-sm font-medium text-gray-500 mb-3 ${settings.largeText ? "text-base" : ""}`}>
+              <h3 className={`text-sm font-medium text-gray-500 mb-3 ${isLargeText() ? "text-base" : ""}`}>
                 Accessibility
               </h3>
               <AccessibilityControls />
@@ -311,7 +376,7 @@ const Layout = ({
             {/* Mobile Emergency Button */}
             {userRole === "customer" && (
               <div className="p-4 border-t">
-                <h3 className={`text-sm font-medium text-gray-500 mb-3 ${settings.largeText ? "text-base" : ""}`}>
+                <h3 className={`text-sm font-medium text-gray-500 mb-3 ${isLargeText() ? "text-base" : ""}`}>
                   Emergency
                 </h3>
                 <div className="flex justify-center">
@@ -356,19 +421,8 @@ const Layout = ({
             </div>
           )}
 
-          {/* Accessibility wrappers */}
-          <HighContrastMode enabled={settings.highContrast}>
-            <LargeTextMode enabled={settings.largeText}>
-              <SimplifiedNavigation
-                enabled={settings.simplifiedNavigation}
-              >
-                {children}
-              </SimplifiedNavigation>
-            </LargeTextMode>
-          </HighContrastMode>
-
-          {/* Floating Menu */}
-          {showFloatingMenu && <FloatingMenu />}
+          {/* Main content */}
+          {children}
 
           {/* Emergency Chat Dialog */}
           <Dialog open={showEmergencyChat} onOpenChange={setShowEmergencyChat}>
