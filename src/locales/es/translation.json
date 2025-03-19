@@ -1,0 +1,252 @@
+{
+  "app": {
+    "name": "Asistencia Senior",
+    "tagline": "Conectando personas mayores con ayudantes de confianza"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "close": "Cerrar",
+    "submit": "Enviar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "noAccount": "¿No tiene una cuenta?",
+    "hasAccount": "¿Ya tiene una cuenta?",
+    "signUp": "Registrarse",
+    "signIn": "Iniciar sesión",
+    "demoLogin": "Inicio de sesión de demostración"
+  },
+  "navigation": {
+    "dashboard": "Panel principal",
+    "requestService": "Solicitar servicio",
+    "nearbyHubs": "Centros cercanos",
+    "medications": "Medicamentos",
+    "wellness": "Bienestar",
+    "caregiver": "Cuidador",
+    "profile": "Perfil",
+    "settings": "Configuración"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido/a",
+    "activeRequests": "Solicitudes activas",
+    "upcomingServices": "Próximos servicios",
+    "nearbyHubs": "Centros comunitarios cercanos",
+    "quickActions": "Acciones rápidas",
+    "requestService": "Solicitar servicio",
+    "viewMedications": "Ver medicamentos",
+    "checkWellness": "Control de bienestar",
+    "emergencyContacts": "Contactos de emergencia"
+  },
+  "medications": {
+    "title": "Recordatorios de medicamentos",
+    "addMedication": "Añadir medicamento",
+    "name": "Nombre",
+    "dosage": "Dosis",
+    "frequency": "Frecuencia",
+    "time": "Hora",
+    "notes": "Notas",
+    "markAsTaken": "Marcar como tomado",
+    "lastTaken": "Última toma",
+    "nextDue": "Próxima toma",
+    "noMedications": "No hay medicamentos añadidos todavía",
+    "addMedicationsPrompt": "Añada sus medicamentos para recibir recordatorios",
+    "frequencies": {
+      "daily": "Una vez al día",
+      "twiceDaily": "Dos veces al día",
+      "weekly": "Semanal",
+      "asNeeded": "Según sea necesario"
+    }
+  },
+  "wellness": {
+    "title": "Controles de bienestar",
+    "startCheck": "Iniciar control",
+    "completed": "Completado",
+    "missed": "Perdido",
+    "pending": "Pendiente",
+    "dailyCheck": "Control diario de bienestar",
+    "howFeeling": "¿Cómo se siente hoy?",
+    "tookMedications": "¿Tomó todos sus medicamentos hoy?",
+    "eatenMeals": "¿Ha comido regularmente hoy?",
+    "needHelp": "¿Hay algo con lo que necesite ayuda hoy?",
+    "feeling": {
+      "poor": "Mal",
+      "fair": "Regular",
+      "good": "Bien",
+      "great": "Muy bien",
+      "excellent": "Excelente"
+    }
+  },
+  "caregiver": {
+    "title": "Portal del cuidador",
+    "lovedOnes": "Sus seres queridos",
+    "selectPerson": "Seleccione una persona para ver detalles",
+    "lastActive": "Última actividad",
+    "overview": "Resumen",
+    "activities": "Actividades",
+    "wellness": "Bienestar",
+    "medications": "Medicamentos",
+    "sendMessage": "Enviar mensaje",
+    "call": "Llamar",
+    "emergencyContact": "Contacto de emergencia",
+    "notifications": "Notificaciones",
+    "notificationSettings": "Configuración de notificaciones"
+  },
+  "settings": {
+    "title": "Configuración",
+    "account": "Cuenta",
+    "notifications": "Notificaciones",
+    "privacy": "Privacidad",
+    "accessibility": "Accesibilidad",
+    "accountInfo": "Información de la cuenta",
+    "personalDetails": "Actualice sus datos personales aquí.",
+    "fullName": "Nombre completo",
+    "phoneNumber": "Número de teléfono",
+    "homeAddress": "Dirección de casa",
+    "saveChanges": "Guardar cambios",
+    "notificationPreferences": "Preferencias de notificación",
+    "howReceiveNotifications": "Controle cómo recibe las notificaciones.",
+    "serviceUpdates": "Actualizaciones de servicio",
+    "helperArrivalAlerts": "Alertas de llegada del ayudante",
+    "communityHubUpdates": "Actualizaciones del centro comunitario",
+    "emergencyContactNotifications": "Notificaciones de contacto de emergencia",
+    "savePreferences": "Guardar preferencias",
+    "privacySettings": "Configuración de privacidad",
+    "managePrivacyPreferences": "Administre sus preferencias de privacidad.",
+    "locationSharing": "Compartir ubicación",
+    "profileVisibility": "Visibilidad del perfil",
+    "dataCollection": "Recopilación de datos",
+    "downloadMyData": "Descargar mis datos",
+    "saveSettings": "Guardar configuración",
+    "accessibilityOptions": "Opciones de accesibilidad",
+    "customizeExperience": "Personalice su experiencia para una mejor accesibilidad.",
+    "largerText": "Texto más grande",
+    "highContrastMode": "Modo de alto contraste",
+    "screenReaderSupport": "Soporte para lector de pantalla",
+    "voiceCommands": "Comandos de voz",
+    "language": "Idioma",
+    "selectLanguage": "Seleccione su idioma preferido"
+  },
+  "emergency": {
+    "sos": "SOS",
+    "emergency": "Emergencia",
+    "callEmergencyServices": "Llamar a servicios de emergencia",
+    "alertContacts": "Alertar a contactos de emergencia",
+    "cancelAlert": "Cancelar alerta"
+  },
+  "languages": {
+    "en": "Inglés",
+    "es": "Español"
+  },
+  "helper": {
+    "verification": {
+      "title": "Verificación de Ayudante",
+      "status": {
+        "inProgress": "Verificación en Progreso",
+        "approved": "Ayudante Verificado",
+        "rejected": "Verificación Rechazada",
+        "pending": "Verificación Pendiente"
+      },
+      "progress": {
+        "title": "Progreso de Verificación",
+        "description": "Complete todos los pasos requeridos para convertirse en un ayudante verificado",
+        "backgroundCheck": "Verificación de Antecedentes",
+        "identityVerification": "Verificación de Identidad",
+        "skillsVerification": "Verificación de Habilidades",
+        "completed": "Completado",
+        "pending": "Pendiente"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "documents": "Documentos",
+        "steps": "Pasos de Verificación"
+      },
+      "overview": {
+        "title": "Resumen de Verificación",
+        "welcome": "Bienvenido al Proceso de Verificación de Ayudante",
+        "description": "Para garantizar la seguridad y confianza de los miembros de nuestra comunidad de personas mayores, todos los ayudantes deben completar un proceso de verificación exhaustivo. Esto incluye verificación de documentos, verificación de antecedentes y evaluación de habilidades.",
+        "status": "Estado de Verificación",
+        "statusMessages": {
+          "approved": "¡Felicitaciones! Usted es un ayudante completamente verificado.",
+          "rejected": "Su verificación ha sido rechazada. Por favor, contacte con soporte para más información.",
+          "inProgress": "Su verificación está en progreso. Por favor, complete todos los pasos requeridos.",
+          "pending": "Su verificación está pendiente. Por favor, comience el proceso subiendo los documentos requeridos."
+        },
+        "documentSubmission": "Envío de Documentos",
+        "documentDescription": "Suba todos los documentos requeridos, incluyendo identificación, certificaciones y referencias.",
+        "manageDocuments": "Gestionar Documentos",
+        "verificationSteps": "Pasos de Verificación",
+        "stepsDescription": "Siga su progreso a través del proceso de verificación.",
+        "viewSteps": "Ver Pasos",
+        "nextSteps": "Próximos Pasos",
+        "actionRequired": "Acción Requerida"
+      },
+      "documents": {
+        "title": "Documentos Requeridos",
+        "upload": "Subir Documento",
+        "uploadNew": "Subir Nuevo Documento",
+        "uploadDescription": "Suba un documento para verificación. Formatos aceptados: PDF, JPG, PNG.",
+        "documentName": "Nombre del Documento",
+        "documentType": "Tipo de Documento",
+        "uploadFile": "Subir Archivo",
+        "types": {
+          "identification": "Identificación",
+          "certification": "Certificación",
+          "reference": "Referencia",
+          "consent": "Formulario de Consentimiento",
+          "other": "Otro"
+        },
+        "noDocuments": "No hay documentos subidos todavía.",
+        "noDocumentsDescription": "Por favor, suba los documentos requeridos para proceder con la verificación.",
+        "uploadedOn": "Subido el",
+        "type": "Tipo",
+        "comments": "Comentarios",
+        "view": "Ver",
+        "remove": "Eliminar"
+      },
+      "steps": {
+        "title": "Pasos de Verificación",
+        "step": "Paso",
+        "status": {
+          "inProgress": "En Progreso",
+          "completed": "Completado",
+          "pending": "Pendiente",
+          "failed": "Fallido"
+        },
+        "actionRequired": "Acción Requerida",
+        "actions": {
+          "uploadDocuments": "Por favor, suba todos los documentos requeridos para la verificación.",
+          "backgroundCheck": "Su verificación de antecedentes está en progreso. Esto puede tomar de 3 a 5 días hábiles.",
+          "skillsAssessment": "Por favor, complete los módulos de evaluación de habilidades requeridos.",
+          "interview": "Programe su entrevista virtual con un coordinador del centro.",
+          "processing": "Este paso está siendo procesado actualmente."
+        },
+        "manageDocuments": "Gestionar Documentos",
+        "startAssessment": "Iniciar Evaluación",
+        "scheduleInterview": "Programar Entrevista",
+        "viewDetails": "Ver Detalles",
+        "rejectionTitle": "Verificación Rechazada",
+        "rejectionDescription": "Su verificación de ayudante ha sido rechazada. Por favor, revise los comentarios a continuación y contacte con soporte para obtener ayuda.",
+        "feedback": "Comentarios",
+        "rejectionFeedback": "Uno o más de sus documentos enviados no pudieron ser verificados. Por favor, asegúrese de que todos los documentos sean válidos y estén actualizados, luego vuelva a enviar su solicitud.",
+        "contactSupport": "Contactar Soporte",
+        "reapply": "Volver a Solicitar",
+        "approvalTitle": "Verificación Aprobada",
+        "approvalDescription": "¡Felicitaciones! Ahora es un ayudante verificado. Puede comenzar a aceptar solicitudes de servicio de usuarios mayores en su comunidad.",
+        "viewRequests": "Ver Solicitudes Disponibles"
+      }
+    }
+  }
+}

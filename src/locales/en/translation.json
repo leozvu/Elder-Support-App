@@ -1,0 +1,252 @@
+{
+  "app": {
+    "name": "Senior Assist",
+    "tagline": "Connecting seniors with trusted helpers"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "email": "Email Address",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signUp": "Sign Up",
+    "signIn": "Sign In",
+    "demoLogin": "Demo Login"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "requestService": "Request Service",
+    "nearbyHubs": "Nearby Hubs",
+    "medications": "Medications",
+    "wellness": "Wellness",
+    "caregiver": "Caregiver",
+    "profile": "Profile",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "activeRequests": "Active Requests",
+    "upcomingServices": "Upcoming Services",
+    "nearbyHubs": "Nearby Community Hubs",
+    "quickActions": "Quick Actions",
+    "requestService": "Request Service",
+    "viewMedications": "View Medications",
+    "checkWellness": "Wellness Check",
+    "emergencyContacts": "Emergency Contacts"
+  },
+  "medications": {
+    "title": "Medication Reminders",
+    "addMedication": "Add Medication",
+    "name": "Name",
+    "dosage": "Dosage",
+    "frequency": "Frequency",
+    "time": "Time",
+    "notes": "Notes",
+    "markAsTaken": "Mark as Taken",
+    "lastTaken": "Last taken",
+    "nextDue": "Next due",
+    "noMedications": "No medications added yet",
+    "addMedicationsPrompt": "Add your medications to receive reminders",
+    "frequencies": {
+      "daily": "Once daily",
+      "twiceDaily": "Twice daily",
+      "weekly": "Weekly",
+      "asNeeded": "As needed"
+    }
+  },
+  "wellness": {
+    "title": "Wellness Checks",
+    "startCheck": "Start Check",
+    "completed": "Completed",
+    "missed": "Missed",
+    "pending": "Pending",
+    "dailyCheck": "Daily Wellness Check",
+    "howFeeling": "How are you feeling today?",
+    "tookMedications": "Did you take all your medications today?",
+    "eatenMeals": "Have you eaten regular meals today?",
+    "needHelp": "Is there anything you need help with today?",
+    "feeling": {
+      "poor": "Poor",
+      "fair": "Fair",
+      "good": "Good",
+      "great": "Great",
+      "excellent": "Excellent"
+    }
+  },
+  "caregiver": {
+    "title": "Caregiver Portal",
+    "lovedOnes": "Your Loved Ones",
+    "selectPerson": "Select a person to view details",
+    "lastActive": "Last active",
+    "overview": "Overview",
+    "activities": "Activities",
+    "wellness": "Wellness",
+    "medications": "Medications",
+    "sendMessage": "Send Message",
+    "call": "Call",
+    "emergencyContact": "Emergency Contact",
+    "notifications": "Notifications",
+    "notificationSettings": "Notification Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "accessibility": "Accessibility",
+    "accountInfo": "Account Information",
+    "personalDetails": "Update your personal details here.",
+    "fullName": "Full Name",
+    "phoneNumber": "Phone Number",
+    "homeAddress": "Home Address",
+    "saveChanges": "Save Changes",
+    "notificationPreferences": "Notification Preferences",
+    "howReceiveNotifications": "Control how you receive notifications.",
+    "serviceUpdates": "Service Updates",
+    "helperArrivalAlerts": "Helper Arrival Alerts",
+    "communityHubUpdates": "Community Hub Updates",
+    "emergencyContactNotifications": "Emergency Contact Notifications",
+    "savePreferences": "Save Preferences",
+    "privacySettings": "Privacy Settings",
+    "managePrivacyPreferences": "Manage your privacy preferences.",
+    "locationSharing": "Location Sharing",
+    "profileVisibility": "Profile Visibility",
+    "dataCollection": "Data Collection",
+    "downloadMyData": "Download My Data",
+    "saveSettings": "Save Settings",
+    "accessibilityOptions": "Accessibility Options",
+    "customizeExperience": "Customize your experience for better accessibility.",
+    "largerText": "Larger Text",
+    "highContrastMode": "High Contrast Mode",
+    "screenReaderSupport": "Screen Reader Support",
+    "voiceCommands": "Voice Commands",
+    "language": "Language",
+    "selectLanguage": "Select your preferred language"
+  },
+  "emergency": {
+    "sos": "SOS",
+    "emergency": "Emergency",
+    "callEmergencyServices": "Call Emergency Services",
+    "alertContacts": "Alert Emergency Contacts",
+    "cancelAlert": "Cancel Alert"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Spanish"
+  },
+  "helper": {
+    "verification": {
+      "title": "Helper Verification",
+      "status": {
+        "inProgress": "Verification In Progress",
+        "approved": "Verified Helper",
+        "rejected": "Verification Rejected",
+        "pending": "Pending Verification"
+      },
+      "progress": {
+        "title": "Verification Progress",
+        "description": "Complete all required steps to become a verified helper",
+        "backgroundCheck": "Background Check",
+        "identityVerification": "Identity Verification",
+        "skillsVerification": "Skills Verification",
+        "completed": "Completed",
+        "pending": "Pending"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "documents": "Documents",
+        "steps": "Verification Steps"
+      },
+      "overview": {
+        "title": "Verification Overview",
+        "welcome": "Welcome to the Helper Verification Process",
+        "description": "To ensure the safety and trust of our elderly community members, all helpers must complete a comprehensive verification process. This includes document verification, background checks, and skills assessment.",
+        "status": "Verification Status",
+        "statusMessages": {
+          "approved": "Congratulations! You are a fully verified helper.",
+          "rejected": "Your verification has been rejected. Please contact support for more information.",
+          "inProgress": "Your verification is in progress. Please complete all required steps.",
+          "pending": "Your verification is pending. Please start the process by uploading required documents."
+        },
+        "documentSubmission": "Document Submission",
+        "documentDescription": "Upload all required documents including ID, certifications, and references.",
+        "manageDocuments": "Manage Documents",
+        "verificationSteps": "Verification Steps",
+        "stepsDescription": "Track your progress through the verification process.",
+        "viewSteps": "View Steps",
+        "nextSteps": "Next Steps",
+        "actionRequired": "Action Required"
+      },
+      "documents": {
+        "title": "Required Documents",
+        "upload": "Upload Document",
+        "uploadNew": "Upload New Document",
+        "uploadDescription": "Upload a document for verification. Accepted formats: PDF, JPG, PNG.",
+        "documentName": "Document Name",
+        "documentType": "Document Type",
+        "uploadFile": "Upload File",
+        "types": {
+          "identification": "Identification",
+          "certification": "Certification",
+          "reference": "Reference",
+          "consent": "Consent Form",
+          "other": "Other"
+        },
+        "noDocuments": "No documents uploaded yet.",
+        "noDocumentsDescription": "Please upload the required documents to proceed with verification.",
+        "uploadedOn": "Uploaded on",
+        "type": "Type",
+        "comments": "Comments",
+        "view": "View",
+        "remove": "Remove"
+      },
+      "steps": {
+        "title": "Verification Steps",
+        "step": "Step",
+        "status": {
+          "inProgress": "In Progress",
+          "completed": "Completed",
+          "pending": "Pending",
+          "failed": "Failed"
+        },
+        "actionRequired": "Action Required",
+        "actions": {
+          "uploadDocuments": "Please upload all required documents for verification.",
+          "backgroundCheck": "Your background check is in progress. This may take 3-5 business days.",
+          "skillsAssessment": "Please complete the required skills assessment modules.",
+          "interview": "Schedule your virtual interview with a hub coordinator.",
+          "processing": "This step is currently being processed."
+        },
+        "manageDocuments": "Manage Documents",
+        "startAssessment": "Start Assessment",
+        "scheduleInterview": "Schedule Interview",
+        "viewDetails": "View Details",
+        "rejectionTitle": "Verification Rejected",
+        "rejectionDescription": "Your helper verification has been rejected. Please review the feedback below and contact support for assistance.",
+        "feedback": "Feedback",
+        "rejectionFeedback": "One or more of your submitted documents could not be verified. Please ensure all documents are valid and up-to-date, then resubmit your application.",
+        "contactSupport": "Contact Support",
+        "reapply": "Reapply",
+        "approvalTitle": "Verification Approved",
+        "approvalDescription": "Congratulations! You are now a verified helper. You can start accepting service requests from elderly users in your community.",
+        "viewRequests": "View Available Requests"
+      }
+    }
+  }
+}
