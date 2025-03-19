@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./lib/auth";
 import ErrorBoundary from "./components/error/ErrorBoundary";
 import AccessibilityWrapper from "./components/accessibility/AccessibilityWrapper";
+import DatabaseStatus from "./components/database/DatabaseStatus";
 
 // Import components directly instead of using lazy loading for critical components
 import Home from "./components/home";
@@ -19,7 +20,6 @@ const Diagnostics = React.lazy(() => import("./pages/Diagnostics"));
 const SupabaseDiagnostic = React.lazy(() => import("./pages/SupabaseDiagnostic"));
 const SystemDiagnostics = React.lazy(() => import("./pages/SystemDiagnostics"));
 const DatabaseDiagnostics = React.lazy(() => import("./pages/DatabaseDiagnostics"));
-const DatabaseIntegrationTest = React.lazy(() => import("./pages/DatabaseIntegrationTest"));
 
 // Loading component with timeout detection
 const LoadingScreen = ({ timeout = 10000 }) => {
@@ -192,18 +192,9 @@ function App() {
               </ErrorBoundary>
             } 
           />
-          <Route 
-            path="/database-integration-test" 
-            element={
-              <ErrorBoundary context="DatabaseIntegrationTest">
-                <Suspense fallback={<LoadingScreen />}>
-                  <DatabaseIntegrationTest />
-                </Suspense>
-              </ErrorBoundary>
-            } 
-          />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        <DatabaseStatus />
       </Suspense>
     </AccessibilityWrapper>
   );

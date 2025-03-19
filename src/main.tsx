@@ -7,14 +7,18 @@ import { AuthProvider } from "./lib/auth";
 import { Toaster } from "@/components/ui/toaster";
 import { VoiceGuidanceProvider } from "./components/voice-guidance/VoiceGuidanceProvider";
 import { logError } from "./lib/errorLogging";
-import { initDatabaseService } from "./lib/database";
+import { supabase, testConnection } from "./lib/supabase";
 
-// Initialize database service
-initDatabaseService().then(success => {
-  console.log(`Database service initialized: ${success ? 'Connected to database' : 'Using mock data'}`);
+// Test database connection on startup
+testConnection().then(connected => {
+  if (connected) {
+    console.log('✅ Database connection successful');
+  } else {
+    console.warn('⚠️ Database connection failed, using mock data');
+  }
 }).catch(error => {
-  console.error('Failed to initialize database service:', error);
-  logError(error, 'DatabaseServiceInit');
+  console.error('❌ Error testing database connection:', error);
+  logError(error, 'DatabaseConnectionTest');
 });
 
 // Global error handler
@@ -86,9 +90,6 @@ function initializeApp() {
           </div>
           <button onclick="window.location.reload()" style="background-color: #3182ce; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif;">
             Refresh Page
-          </button>
-          <button onclick="window.location.href='/database-integration-test'" style="background-color: #4c1d95; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif; margin-top: 8px;">
-            Run Database Tests
           </button>
         </div>
       `;

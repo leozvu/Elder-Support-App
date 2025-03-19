@@ -137,17 +137,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     
-    // Only check Supabase auth if we're not using mock data
-    if (!isUsingMockData()) {
-      checkAuth();
-    } else {
-      // If using mock data, set auth as initialized but not logged in
-      if (isMounted) {
-        setIsLoading(false);
-        setAuthInitialized(true);
-        clearTimeout(loadingTimeout);
-      }
-    }
+    checkAuth();
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -191,7 +181,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       // For demo purposes, allow login with demo accounts
       if (email === "martha@example.com" && password === "password123") {
         const demoUser = {
-          id: "demo-martha",
+          id: "00000000-0000-0000-0000-000000000011",
           email: "martha@example.com",
           full_name: "Martha Johnson",
           role: "customer",
@@ -211,11 +201,11 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (email === "helper@example.com" && password === "password123") {
         const demoUser = {
-          id: "demo-helper",
+          id: "00000000-0000-0000-0000-000000000012",
           email: "helper@example.com",
-          full_name: "Henry Helper",
+          full_name: "Helper User",
           role: "helper",
-          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Henry",
+          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Helper",
           phone: "(555) 987-6543",
           address: "456 Oak St, Anytown, USA",
         };
@@ -231,7 +221,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (email === "admin@example.com" && password === "password123") {
         const demoUser = {
-          id: "demo-admin",
+          id: "00000000-0000-0000-0000-000000000013",
           email: "admin@example.com",
           full_name: "Admin User",
           role: "admin",

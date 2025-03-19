@@ -1,61 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Database, RefreshCw } from 'lucide-react';
 import { isUsingMockData } from '@/lib/database';
-import { Link } from 'react-router-dom';
+import { testConnection } from '@/lib/supabase';
 
 const DatabaseStatus = () => {
-  const [usingMockData, setUsingMockData] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
+  const [status, setStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  
   useEffect(() => {
-    checkStatus();
+    checkConnection();
   }, []);
-
-  const checkStatus = () => {
-    setIsLoading(true);
-    setUsingMockData(isUsingMockData());
-    setIsLoading(false);
+  
+  const checkConnection = async () => {
+    setStatus('checking');
+    
+    try {
+      const connected = await testConnection();
+      setStatus(connected ? 'connected' : 'disconnected');
+    } catch (error) {
+      console.error('Error checking connection:', error);
+      setStatus('disconnected');
+    }
   };
-
+  
+  if (status === 'checking') {
+    return (
+      <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs flex items-center">
+        <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+        Checking database...
+      </div>
+    );
+  }
+  
+  if (status === 'disconnected') {
+    return (
+      <div className="fixed bottom-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-xs flex items-center">
+        <span className="h-2 w-2 bg-white rounded-full mr-2"></span>
+        Using mock data
+      </div>
+    );
+  }
+  
   return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-gray-500" />
-            <span className="font-medium">Database Status:</span>
-            {usingMockData ? (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <XCircle className="h-3 w-3" />
-                Using Mock Data
-              </Badge>
-            ) : (
-              <Badge variant="default" className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Connected
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 px-2"
-              onClick={checkStatus}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/database-diagnostics">Diagnostics</Link>
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="fixed bottom-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-xs flex items-center">
+      <span className="h-2 w-2 bg-white rounded-full mr-2"></span>
+      Database connected
+    </div>
   );
 };
 
