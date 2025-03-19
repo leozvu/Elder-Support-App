@@ -12,14 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Phone, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { speak } from "@/lib/voice-guidance";
-
-interface EmergencyContact {
-  id: string;
-  name: string;
-  phone: string;
-  relationship: string;
-}
 
 interface SOSButtonProps {
   userRole?: string;
@@ -34,7 +26,7 @@ const SOSButton: React.FC<SOSButtonProps> = ({
   const { toast } = useToast();
   
   // Mock emergency contacts
-  const emergencyContacts: EmergencyContact[] = [
+  const emergencyContacts = [
     {
       id: "1",
       name: "John Smith",
@@ -57,7 +49,6 @@ const SOSButton: React.FC<SOSButtonProps> = ({
 
   const handleSOSClick = () => {
     setIsDialogOpen(true);
-    speak("Emergency SOS button pressed. Confirm to send alert to your emergency contacts.", true);
   };
 
   const handleConfirm = () => {
@@ -70,9 +61,6 @@ const SOSButton: React.FC<SOSButtonProps> = ({
       description: "Your emergency contacts have been notified.",
       variant: "destructive",
     });
-    
-    // Announce with voice guidance
-    speak("Emergency alert sent. Your emergency contacts have been notified.", true);
     
     // Call the onActivate callback if provided
     if (onActivate) {

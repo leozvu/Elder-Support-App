@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,17 +16,22 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Volume2, Sun, Moon, Type, Maximize2, Settings, VolumeX } from "lucide-react";
-import VoiceGuidanceSystem, { VoiceSettings } from "./VoiceGuidanceSystem";
-import { speak, toggleVoiceGuidance, updateVoiceSettings } from "@/lib/voice-guidance";
+import { Sun, Moon, Type, Maximize2, Settings, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { speak } from "@/lib/voice-guidance";
 
 export interface AccessibilitySettings {
   highContrast: boolean;
   largeText: boolean;
   simplifiedNavigation: boolean;
-  voiceGuidance: VoiceSettings;
+  voiceGuidance: {
+    enabled: boolean;
+    volume: number;
+    rate: number;
+    pitch: number;
+    voice: null;
+    autoReadPageContent: boolean;
+  };
 }
 
 interface AccessibilityControlsProps {
@@ -45,58 +50,59 @@ const AccessibilityControls = ({
   const [simplifiedNavigation, setSimplifiedNavigation] = useState(
     settings.simplifiedNavigation || false,
   );
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    enabled: false,
-    volume: 1,
-    rate: 1,
-    pitch: 1,
-    voice: null,
-    autoReadPageContent: false,
-    ...(settings.voiceGuidance || {}),
-  });
+  const [voiceEnabled, setVoiceEnabled] = useState(
+    settings.voiceGuidance?.enabled || false,
+  );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleVoiceSettingsChange = (newVoiceSettings: VoiceSettings) => {
-    setVoiceSettings(newVoiceSettings);
-    updateSettings({
-      voiceGuidance: newVoiceSettings,
-    });
-  };
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('accessibilitySettings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setHighContrast(parsedSettings.highContrast || false);
+        setLargeText(parsedSettings.largeText || false);
+        setSimplifiedNavigation(parsedSettings.simplifiedNavigation || false);
+        setVoiceEnabled(parsedSettings.voiceGuidance?.enabled || false);
+      } catch (error) {
+        console.error('Failed to parse accessibility settings:', error);
+      }
+    }
+  }, []);
 
-  const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
+  const updateSettings = () => {
     const updatedSettings: AccessibilitySettings = {
       highContrast,
       largeText,
       simplifiedNavigation,
-      voiceGuidance: voiceSettings,
-      ...newSettings,
+      voiceGuidance: {
+        enabled: voiceEnabled,
+        volume: 1,
+        rate: 1,
+        pitch: 1,
+        voice: null,
+        autoReadPageContent: false,
+      },
     };
 
-    onSettingsChange(updatedSettings);
+    // Save to localStorage
+    localStorage.setItem('accessibilitySettings', JSON.stringify(updatedSettings));
 
     // Apply settings to document
-    document.documentElement.classList.toggle(
-      "high-contrast",
-      updatedSettings.highContrast,
-    );
-    document.documentElement.classList.toggle(
-      "large-text",
-      updatedSettings.largeText,
-    );
-    document.documentElement.classList.toggle(
-      "simplified-nav",
-      updatedSettings.simplifiedNavigation,
-    );
-    
-    // Save settings to localStorage
-    localStorage.setItem('accessibilitySettings', JSON.stringify(updatedSettings));
-    
+    document.documentElement.classList.toggle('high-contrast', updatedSettings.highContrast);
+    document.documentElement.classList.toggle('large-text', updatedSettings.largeText);
+    document.documentElement.classList.toggle('simplified-nav', updatedSettings.simplifiedNavigation);
+
+    // Call the callback
+    onSettingsChange(updatedSettings);
+
     // Announce changes if voice guidance is enabled
-    if (updatedSettings.voiceGuidance.enabled) {
+    if (voiceEnabled) {
       speak("Accessibility settings updated");
     }
-    
+
     // Show toast notification
     toast({
       title: "Accessibility Settings Updated",
@@ -107,48 +113,45 @@ const AccessibilityControls = ({
   const toggleHighContrast = () => {
     const newValue = !highContrast;
     setHighContrast(newValue);
-    updateSettings({ highContrast: newValue });
-    
-    if (voiceSettings.enabled) {
-      speak(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`);
-    }
+    setTimeout(() => {
+      updateSettings();
+      if (voiceEnabled) {
+        speak(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`);
+      }
+    }, 0);
   };
 
   const toggleLargeText = () => {
     const newValue = !largeText;
     setLargeText(newValue);
-    updateSettings({ largeText: newValue });
-    
-    if (voiceSettings.enabled) {
-      speak(`Large text mode ${newValue ? 'enabled' : 'disabled'}`);
-    }
+    setTimeout(() => {
+      updateSettings();
+      if (voiceEnabled) {
+        speak(`Large text mode ${newValue ? 'enabled' : 'disabled'}`);
+      }
+    }, 0);
   };
 
   const toggleSimplifiedNavigation = () => {
     const newValue = !simplifiedNavigation;
     setSimplifiedNavigation(newValue);
-    updateSettings({ simplifiedNavigation: newValue });
-    
-    if (voiceSettings.enabled) {
-      speak(`Simplified navigation ${newValue ? 'enabled' : 'disabled'}`);
-    }
-  };
-  
-  const handleToggleVoiceGuidance = () => {
-    const newEnabled = !voiceSettings.enabled;
-    setVoiceSettings({
-      ...voiceSettings,
-      enabled: newEnabled
-    });
-    updateSettings({
-      voiceGuidance: {
-        ...voiceSettings,
-        enabled: newEnabled
+    setTimeout(() => {
+      updateSettings();
+      if (voiceEnabled) {
+        speak(`Simplified navigation ${newValue ? 'enabled' : 'disabled'}`);
       }
-    });
-    
-    // This will automatically announce if enabled
-    toggleVoiceGuidance();
+    }, 0);
+  };
+
+  const toggleVoiceGuidance = () => {
+    const newValue = !voiceEnabled;
+    setVoiceEnabled(newValue);
+    setTimeout(() => {
+      updateSettings();
+      if (newValue) {
+        speak("Voice guidance enabled");
+      }
+    }, 0);
   };
 
   return (
@@ -224,12 +227,12 @@ const AccessibilityControls = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={voiceSettings.enabled ? "default" : "outline"}
+                variant={voiceEnabled ? "default" : "outline"}
                 size="icon"
-                onClick={handleToggleVoiceGuidance}
+                onClick={toggleVoiceGuidance}
                 aria-label="Toggle voice guidance"
               >
-                {voiceSettings.enabled ? (
+                {voiceEnabled ? (
                   <Volume2 className="h-5 w-5" />
                 ) : (
                   <VolumeX className="h-5 w-5" />
@@ -238,7 +241,7 @@ const AccessibilityControls = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>
-                {voiceSettings.enabled
+                {voiceEnabled
                   ? "Disable voice guidance"
                   : "Enable voice guidance"}
               </p>
@@ -274,7 +277,7 @@ const AccessibilityControls = ({
                   checked={highContrast}
                   onCheckedChange={(checked) => {
                     setHighContrast(checked);
-                    updateSettings({ highContrast: checked });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
@@ -288,7 +291,7 @@ const AccessibilityControls = ({
                   checked={largeText}
                   onCheckedChange={(checked) => {
                     setLargeText(checked);
-                    updateSettings({ largeText: checked });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
@@ -302,105 +305,24 @@ const AccessibilityControls = ({
                   checked={simplifiedNavigation}
                   onCheckedChange={(checked) => {
                     setSimplifiedNavigation(checked);
-                    updateSettings({ simplifiedNavigation: checked });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <Label htmlFor="voice-guidance" className="flex-1">
                   Voice Guidance
                 </Label>
                 <Switch
                   id="voice-guidance"
-                  checked={voiceSettings.enabled}
+                  checked={voiceEnabled}
                   onCheckedChange={(checked) => {
-                    setVoiceSettings({
-                      ...voiceSettings,
-                      enabled: checked
-                    });
-                    updateSettings({
-                      voiceGuidance: {
-                        ...voiceSettings,
-                        enabled: checked
-                      }
-                    });
-                    
-                    // This will automatically announce if enabled
-                    toggleVoiceGuidance();
+                    setVoiceEnabled(checked);
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
-              
-              {voiceSettings.enabled && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="voice-rate">Speech Rate</Label>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Slow</span>
-                      <Slider
-                        id="voice-rate"
-                        min={0.5}
-                        max={2}
-                        step={0.1}
-                        value={[voiceSettings.rate]}
-                        onValueChange={(value) => {
-                          setVoiceSettings({
-                            ...voiceSettings,
-                            rate: value[0]
-                          });
-                          updateSettings({
-                            voiceGuidance: {
-                              ...voiceSettings,
-                              rate: value[0]
-                            }
-                          });
-                        }}
-                        className="w-[60%]"
-                      />
-                      <span className="text-sm">Fast</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="voice-volume">Volume</Label>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Quiet</span>
-                      <Slider
-                        id="voice-volume"
-                        min={0}
-                        max={1}
-                        step={0.1}
-                        value={[voiceSettings.volume]}
-                        onValueChange={(value) => {
-                          setVoiceSettings({
-                            ...voiceSettings,
-                            volume: value[0]
-                          });
-                          updateSettings({
-                            voiceGuidance: {
-                              ...voiceSettings,
-                              volume: value[0]
-                            }
-                          });
-                        }}
-                        className="w-[60%]"
-                      />
-                      <span className="text-sm">Loud</span>
-                    </div>
-                  </div>
-                  
-                  <Button
-                    onClick={() => {
-                      if (voiceSettings.enabled) {
-                        speak("This is a test of the voice guidance system");
-                      }
-                    }}
-                  >
-                    Test Voice
-                  </Button>
-                </>
-              )}
 
               <div className="pt-2">
                 <Button
@@ -409,27 +331,8 @@ const AccessibilityControls = ({
                     setHighContrast(false);
                     setLargeText(false);
                     setSimplifiedNavigation(false);
-                    setVoiceSettings({
-                      enabled: false,
-                      volume: 1,
-                      rate: 1,
-                      pitch: 1,
-                      voice: null,
-                      autoReadPageContent: false,
-                    });
-                    updateSettings({
-                      highContrast: false,
-                      largeText: false,
-                      simplifiedNavigation: false,
-                      voiceGuidance: {
-                        enabled: false,
-                        volume: 1,
-                        rate: 1,
-                        pitch: 1,
-                        voice: null,
-                        autoReadPageContent: false,
-                      },
-                    });
+                    setVoiceEnabled(false);
+                    setTimeout(() => updateSettings(), 0);
                   }}
                   variant="outline"
                   className="w-full"

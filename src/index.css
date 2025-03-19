@@ -105,23 +105,6 @@
   --popover-foreground: 0 0% 100%;
 }
 
-.high-contrast button,
-.high-contrast a,
-.high-contrast input,
-.high-contrast select,
-.high-contrast textarea {
-  border: 2px solid white !important;
-}
-
-.high-contrast button:focus,
-.high-contrast a:focus,
-.high-contrast input:focus,
-.high-contrast select:focus,
-.high-contrast textarea:focus {
-  outline: 3px solid yellow !important;
-  outline-offset: 2px !important;
-}
-
 /* Large text mode */
 .large-text {
   font-size: 1.25rem;
@@ -142,7 +125,6 @@
 .large-text button,
 .large-text a {
   font-size: 1.25rem;
-  padding: 0.75rem 1.25rem;
 }
 
 /* Simplified navigation mode */

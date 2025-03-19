@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { speak } from '@/lib/voice-guidance';
 
 interface VoiceGuidedElementProps {
@@ -12,53 +12,30 @@ const VoiceGuidedElement: React.FC<VoiceGuidedElementProps> = ({
   description,
   priority = false
 }) => {
-  const elementRef = useRef<HTMLDivElement>(null);
-  
-  // Check if voice guidance is enabled
-  const isVoiceEnabled = () => {
-    try {
-      const settings = localStorage.getItem('accessibilitySettings');
-      if (settings) {
-        const parsed = JSON.parse(settings);
-        return parsed.voiceGuidance?.enabled || false;
-      }
-    } catch (e) {
-      console.error('Error checking voice guidance settings:', e);
-    }
-    return false;
+  // Function to handle focus
+  const handleFocus = () => {
+    speak(description, priority);
   };
 
-  useEffect(() => {
-    const element = elementRef.current;
-    if (!element) return;
-
-    const handleFocus = () => {
-      if (isVoiceEnabled()) {
-        speak(description, priority);
-      }
-    };
-
-    // Find all focusable elements within this component
-    const focusableElements = element.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-
-    // Add event listeners to each focusable element
-    focusableElements.forEach(el => {
-      el.addEventListener('focus', handleFocus);
-    });
-
-    return () => {
-      // Clean up event listeners
-      focusableElements.forEach(el => {
-        el.removeEventListener('focus', handleFocus);
+  // Clone the child element and add onFocus handler
+  const childrenWithProps = React.Children.map(children, child => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child, {
+        onFocus: (e: React.FocusEvent) => {
+          handleFocus();
+          // Call the original onFocus if it exists
+          if (child.props.onFocus) {
+            child.props.onFocus(e);
+          }
+        }
       });
-    };
-  }, [description, priority]);
+    }
+    return child;
+  });
 
   return (
-    <div ref={elementRef} data-voice-description={description}>
-      {children}
+    <div data-voice-description={description}>
+      {childrenWithProps}
     </div>
   );
 };

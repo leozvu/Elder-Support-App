@@ -10,12 +10,6 @@ import {
   Plus,
   X,
   HelpCircle,
-  Calendar,
-  Clock,
-  Pill,
-  Activity,
-  Users,
-  Settings as SettingsIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -23,9 +17,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAccessibility } from "@/components/accessibility/AccessibilityContext";
 import { useNavigate } from "react-router-dom";
 import QuickAccessPanel from "@/components/dashboard/QuickAccessPanel";
+import FloatingMenu from "@/components/navigation/FloatingMenu";
 
 interface ElderlyDashboardProps {
   userName?: string;
@@ -41,10 +35,20 @@ const ElderlyDashboard = ({
   const navigate = useNavigate();
   const [showRequestFlow, setShowRequestFlow] = useState(false);
   const [activeRequest, setActiveRequest] = useState(hasActiveRequest);
-  // Get accessibility settings from context
-  const accessibilityContext = useAccessibility();
-  const simplifiedNavigation =
-    accessibilityContext?.settings?.simplifiedNavigation || false;
+  
+  // Check if simplified navigation is enabled
+  const isSimplifiedNavigation = () => {
+    try {
+      const settings = localStorage.getItem('accessibilitySettings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        return parsed.simplifiedNavigation || false;
+      }
+    } catch (e) {
+      console.error('Error checking simplified navigation settings:', e);
+    }
+    return false;
+  };
 
   const handleServiceSelect = (serviceId: string) => {
     setShowRequestFlow(true);
@@ -95,7 +99,7 @@ const ElderlyDashboard = ({
               </div>
               <ServiceRequestCard
                 onServiceSelect={handleServiceSelect}
-                simplified={simplifiedNavigation}
+                simplified={isSimplifiedNavigation()}
               />
             </section>
 
@@ -282,6 +286,9 @@ const ElderlyDashboard = ({
             <div className="fixed bottom-6 right-6 md:hidden z-10">
               <SOSButton userRole="elderly" />
             </div>
+            
+            {/* Floating Menu */}
+            <FloatingMenu />
           </>
         ) : (
           <div className="relative">
