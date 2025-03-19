@@ -1,18 +1,40 @@
-import React, { useEffect } from "react";
-import { AccessibilityProvider } from "./AccessibilityContext";
+import React, { useEffect } from 'react';
 
 interface AccessibilityWrapperProps {
   children: React.ReactNode;
 }
 
-// Changed to function declaration for consistency with Fast Refresh
-function AccessibilityWrapper({ children }: AccessibilityWrapperProps) {
-  // Log that the wrapper is being rendered
+const AccessibilityWrapper: React.FC<AccessibilityWrapperProps> = ({ children }) => {
+  // Apply accessibility settings from localStorage on mount
   useEffect(() => {
-    console.log("AccessibilityWrapper mounted - context should be available");
+    const applySettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('accessibilitySettings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
+          
+          // Apply settings to document
+          document.documentElement.classList.toggle('high-contrast', parsedSettings.highContrast || false);
+          document.documentElement.classList.toggle('large-text', parsedSettings.largeText || false);
+          document.documentElement.classList.toggle('simplified-nav', parsedSettings.simplifiedNavigation || false);
+        }
+      } catch (error) {
+        console.error('Failed to apply accessibility settings:', error);
+      }
+    };
+    
+    // Apply settings on mount
+    applySettings();
+    
+    // Listen for storage events to update settings when changed
+    window.addEventListener('storage', applySettings);
+    
+    return () => {
+      window.removeEventListener('storage', applySettings);
+    };
   }, []);
 
-  return <AccessibilityProvider>{children}</AccessibilityProvider>;
-}
+  return <>{children}</>;
+};
 
 export default AccessibilityWrapper;

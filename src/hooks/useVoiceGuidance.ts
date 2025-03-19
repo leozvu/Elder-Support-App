@@ -1,35 +1,83 @@
-import { useContext } from "react";
-import VoiceGuidanceContext from "@/components/voice-guidance/VoiceGuidanceContext";
-import {
-  speak,
-  readFormField,
-  announceAction,
-  announceNotification,
-  announcePageChange,
-  stopSpeaking,
-} from "@/lib/voice-guidance";
+import { useState, useEffect, useCallback } from 'react';
+import { 
+  speak, 
+  stopSpeaking, 
+  updateVoiceSettings, 
+  getAvailableVoices,
+  isVoiceGuidanceEnabled,
+  getVoiceGuidanceStatus,
+  toggleVoiceGuidance
+} from '@/lib/voice-guidance';
 
-// Custom hook for voice guidance functionality
-export const useVoiceGuidance = () => {
-  const context = useContext(VoiceGuidanceContext);
+export function useVoiceGuidance() {
+  const status = getVoiceGuidanceStatus();
+  const [enabled, setEnabled] = useState(status.enabled);
+  const [volume, setVolume] = useState(status.volume);
+  const [rate, setRate] = useState(status.rate);
+  const [pitch, setPitch] = useState(status.pitch);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(status.voice);
 
-  if (context === undefined) {
-    throw new Error(
-      "useVoiceGuidance must be used within a VoiceGuidanceProvider",
-    );
-  }
+  // Load available voices
+  useEffect(() => {
+    setVoices(getAvailableVoices());
+    
+    // Set up a listener for voice changes
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const handleVoicesChanged = () => {
+        setVoices(getAvailableVoices());
+      };
+      
+      window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+      
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    }
+  }, []);
+
+  // Update settings when any parameter changes
+  useEffect(() => {
+    updateVoiceSettings({
+      enabled,
+      volume,
+      rate,
+      pitch,
+      voice: selectedVoice
+    });
+  }, [enabled, volume, rate, pitch, selectedVoice]);
+
+  // Speak text
+  const speakText = useCallback((text: string, priority = false) => {
+    if (!enabled) return false;
+    return speak(text, priority);
+  }, [enabled]);
+
+  // Stop speaking
+  const stop = useCallback(() => {
+    stopSpeaking();
+  }, []);
+
+  // Toggle enabled state
+  const toggle = useCallback(() => {
+    const newEnabled = toggleVoiceGuidance();
+    setEnabled(newEnabled);
+  }, []);
 
   return {
-    ...context,
-    speak: (text: string, priority?: boolean) => speak(text, priority),
-    readFormField: (label: string, value?: string) =>
-      readFormField(label, value),
-    announceAction: (action: string) => announceAction(action),
-    announceNotification: (title: string, description?: string) =>
-      announceNotification(title, description),
-    announcePageChange: (pageName: string) => announcePageChange(pageName),
-    stopSpeaking: () => stopSpeaking(),
+    enabled,
+    setEnabled,
+    volume,
+    setVolume,
+    rate,
+    setRate,
+    pitch,
+    setPitch,
+    voices,
+    selectedVoice,
+    setSelectedVoice,
+    speak: speakText,
+    stop,
+    toggle
   };
-};
-
-export default useVoiceGuidance;
+}

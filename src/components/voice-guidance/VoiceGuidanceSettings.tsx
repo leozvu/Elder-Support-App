@@ -1,143 +1,192 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Volume2, VolumeX } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Volume2, Settings } from "lucide-react";
-import {
-  getVoiceGuidanceStatus,
-  updateVoiceSettings,
-  toggleVoiceGuidance,
-  speak,
-} from "@/lib/voice-guidance";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { useAccessibility } from '@/components/accessibility/AccessibilityContext';
+import { speak } from '@/lib/voice-guidance';
 
 interface VoiceGuidanceSettingsProps {
   className?: string;
 }
 
-const VoiceGuidanceSettings = ({
-  className = "",
-}: VoiceGuidanceSettingsProps) => {
-  const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState(() => getVoiceGuidanceStatus());
-
-  const handleToggle = () => {
-    const newState = toggleVoiceGuidance();
-    setSettings((prev) => ({ ...prev, enabled: newState }));
+const VoiceGuidanceSettings: React.FC<VoiceGuidanceSettingsProps> = ({ className = '' }) => {
+  const { settings, updateSettings } = useAccessibility();
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const { voiceGuidance } = settings;
+  
+  const handleToggleVoiceGuidance = () => {
+    const newEnabled = !voiceGuidance.enabled;
+    updateSettings({
+      voiceGuidance: {
+        ...voiceGuidance,
+        enabled: newEnabled
+      }
+    });
+    
+    if (newEnabled) {
+      speak('Voice guidance enabled', true);
+    }
   };
-
+  
+  const handleVolumeChange = (value: number[]) => {
+    updateSettings({
+      voiceGuidance: {
+        ...voiceGuidance,
+        volume: value[0]
+      }
+    });
+    
+    if (voiceGuidance.enabled) {
+      speak('Volume adjusted', true);
+    }
+  };
+  
   const handleRateChange = (value: number[]) => {
-    const newRate = value[0];
-    setSettings((prev) => ({ ...prev, rate: newRate }));
-    updateVoiceSettings({ rate: newRate });
-    speak("This is how the voice will sound at this speed");
+    updateSettings({
+      voiceGuidance: {
+        ...voiceGuidance,
+        rate: value[0]
+      }
+    });
+    
+    if (voiceGuidance.enabled) {
+      speak('Speech rate adjusted', true);
+    }
   };
-
+  
   const handlePitchChange = (value: number[]) => {
-    const newPitch = value[0];
-    setSettings((prev) => ({ ...prev, pitch: newPitch }));
-    updateVoiceSettings({ pitch: newPitch });
-    speak("This is how the voice will sound at this pitch");
+    updateSettings({
+      voiceGuidance: {
+        ...voiceGuidance,
+        pitch: value[0]
+      }
+    });
+    
+    if (voiceGuidance.enabled) {
+      speak('Speech pitch adjusted', true);
+    }
+  };
+  
+  const handleAutoReadChange = (checked: boolean) => {
+    updateSettings({
+      voiceGuidance: {
+        ...voiceGuidance,
+        autoReadPageContent: checked
+      }
+    });
+    
+    if (voiceGuidance.enabled) {
+      speak(checked ? 'Auto-read enabled' : 'Auto-read disabled', true);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={`flex items-center gap-2 ${className}`}
-          onClick={() => speak("Voice guidance settings")}
-        >
-          <Volume2 className="h-4 w-4" />
-          <span>Voice Settings</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Voice Guidance Settings</DialogTitle>
-          <DialogDescription>
-            Customize how voice guidance works for you.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="voice-enabled" className="flex items-center gap-2">
-              <Volume2 className="h-4 w-4" />
-              Enable Voice Guidance
-            </Label>
-            <Switch
-              id="voice-enabled"
-              checked={settings.enabled}
-              onCheckedChange={handleToggle}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="voice-rate">Voice Speed</Label>
-            <div className="flex items-center gap-4">
-              <span className="text-sm">Slow</span>
+    <div className={className}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant={voiceGuidance.enabled ? "default" : "outline"}
+            size="icon"
+            aria-label="Voice guidance settings"
+            title="Voice guidance settings"
+          >
+            {voiceGuidance.enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80">
+          <div className="space-y-4">
+            <h4 className="font-medium">Voice Guidance Settings</h4>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="voice-enabled">Enable Voice Guidance</Label>
+              <Switch
+                id="voice-enabled"
+                checked={voiceGuidance.enabled}
+                onCheckedChange={handleToggleVoiceGuidance}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="voice-volume">Volume</Label>
+                <span>{Math.round(voiceGuidance.volume * 100)}%</span>
+              </div>
+              <Slider
+                id="voice-volume"
+                min={0}
+                max={1}
+                step={0.1}
+                value={[voiceGuidance.volume]}
+                onValueChange={handleVolumeChange}
+                disabled={!voiceGuidance.enabled}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="voice-rate">Speech Rate</Label>
+                <span>{voiceGuidance.rate}x</span>
+              </div>
               <Slider
                 id="voice-rate"
-                disabled={!settings.enabled}
                 min={0.5}
-                max={1.5}
+                max={2}
                 step={0.1}
-                value={[settings.rate]}
+                value={[voiceGuidance.rate]}
                 onValueChange={handleRateChange}
-                className="flex-1"
+                disabled={!voiceGuidance.enabled}
               />
-              <span className="text-sm">Fast</span>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="voice-pitch">Voice Pitch</Label>
-            <div className="flex items-center gap-4">
-              <span className="text-sm">Low</span>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="voice-pitch">Pitch</Label>
+                <span>{voiceGuidance.pitch}x</span>
+              </div>
               <Slider
                 id="voice-pitch"
-                disabled={!settings.enabled}
                 min={0.5}
-                max={1.5}
+                max={2}
                 step={0.1}
-                value={[settings.pitch]}
+                value={[voiceGuidance.pitch]}
                 onValueChange={handlePitchChange}
-                className="flex-1"
+                disabled={!voiceGuidance.enabled}
               />
-              <span className="text-sm">High</span>
             </div>
-          </div>
-
-          <div className="pt-4">
-            <Button
-              variant="secondary"
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="auto-read">Auto-read Page Content</Label>
+              <Switch
+                id="auto-read"
+                checked={voiceGuidance.autoReadPageContent}
+                onCheckedChange={handleAutoReadChange}
+                disabled={!voiceGuidance.enabled}
+              />
+            </div>
+            
+            <Button 
               className="w-full"
               onClick={() => {
-                speak(
-                  "This is a test of the voice guidance system. You can adjust the settings to make it more comfortable for you.",
-                );
+                if (voiceGuidance.enabled) {
+                  speak('This is a test of the voice guidance system. You can adjust the volume, rate, and pitch to your preference.', true);
+                }
               }}
-              disabled={!settings.enabled}
+              disabled={!voiceGuidance.enabled}
             >
               Test Voice
             </Button>
           </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => setOpen(false)}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 };
 

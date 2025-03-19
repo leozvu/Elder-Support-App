@@ -1,90 +1,97 @@
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "../types/supabase";
+import { createClient } from '@supabase/supabase-js';
 
-// Get environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+// Initialize Supabase client with better error handling
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Log environment variables status
-console.log(
-  "VITE_SUPABASE_URL:",
-  import.meta.env.VITE_SUPABASE_URL ? "defined" : "missing",
-);
-console.log(
-  "VITE_SUPABASE_ANON_KEY:",
-  import.meta.env.VITE_SUPABASE_ANON_KEY ? "defined" : "missing",
-);
+// Log configuration issues
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase configuration is missing. Using demo mode.');
+  // Set a flag in localStorage to indicate configuration issues
+  localStorage.setItem('supabaseConfigIssue', 'true');
+}
 
-// Create the Supabase client
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+// Create a custom fetch function with timeout and error handling
+const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
+  // Create an abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  
+  try {
+    // If we're in demo mode, simulate a successful response
+    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
+      clearTimeout(timeoutId);
+      return new Response(JSON.stringify({ data: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    console.error('Supabase fetch error:', error);
+    
+    // Determine if it's a timeout
+    const isTimeout = error.name === 'AbortError';
+    
+    // Return a mock response to prevent crashes
+    return new Response(
+      JSON.stringify({ 
+        error: isTimeout ? 'Request timed out' : 'Network error',
+        details: error.message
+      }), 
+      {
+        status: isTimeout ? 408 : 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+};
+
+// Create the Supabase client with robust error handling
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    storageKey: "senior_assist_auth",
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+  },
+  global: {
+    fetch: customFetch,
   },
 });
 
-// Test the connection and log the result
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log(
-    "Supabase auth state changed:",
-    event,
-    session ? `Session exists for user ${session.user.id}` : "No session",
-  );
+// Test the connection
+export const testSupabaseConnection = async () => {
+  try {
+    // If we're in demo mode, return a simulated success
+    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
+      return { success: true, demo: true };
+    }
+    
+    const start = performance.now();
+    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+    const end = performance.now();
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error.message);
+      return { success: false, message: error.message, latency: end - start };
+    }
+    
+    console.log(`Supabase connection successful! Latency: ${Math.round(end - start)}ms`);
+    return { success: true, latency: end - start };
+  } catch (error) {
+    console.error('Exception during Supabase connection test:', error);
+    return { success: false, message: String(error), latency: null };
+  }
+};
+
+// Run the test immediately
+testSupabaseConnection().then(result => {
+  localStorage.setItem('supabaseConnectionTest', JSON.stringify(result));
 });
-
-// Attempt to verify the connection
-supabase
-  .from("users")
-  .select("count", { count: "exact", head: true })
-  .then(({ count, error }) => {
-    if (error) {
-      console.warn("Supabase connection test failed:", error.message);
-      console.log("Using mock data for development");
-    } else {
-      console.log("Supabase connection successful! Users count:", count);
-    }
-  })
-  .catch((err) => {
-    console.warn("Supabase connection test exception:", err.message);
-    console.log("Using mock data for development");
-  });
-
-// Function to ensure demo users exist
-export const ensureDemoUsersExist = async () => {
-  try {
-    // Call the recreate-demo-users edge function
-    const { data, error } = await supabase.functions.invoke(
-      "recreate-demo-users",
-      {
-        method: "POST",
-      },
-    );
-
-    if (error) {
-      console.error("Error creating demo users:", error);
-      return false;
-    }
-
-    console.log("Demo users created successfully:", data);
-    return true;
-  } catch (error) {
-    console.error("Exception creating demo users:", error);
-    return false;
-  }
-};
-
-// Function to reset auth state
-export const resetAuthState = async () => {
-  try {
-    console.log("Resetting auth state...");
-    await supabase.auth.signOut();
-    localStorage.removeItem("senior_assist_auth");
-    console.log("Auth state reset complete");
-    return true;
-  } catch (error) {
-    console.error("Error resetting auth state:", error);
-    return false;
-  }
-};

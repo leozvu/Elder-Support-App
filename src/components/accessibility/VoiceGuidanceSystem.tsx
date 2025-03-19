@@ -1,9 +1,14 @@
 import React, { useEffect } from "react";
-import { updateVoiceSettings, initVoiceGuidance } from "@/lib/voice-guidance";
-import { useVoiceGuidance as importedUseVoiceGuidance } from "@/hooks/useVoiceGuidance";
+import { updateVoiceSettings, initVoiceGuidance, speak } from "@/lib/voice-guidance";
 
-// Re-export the useVoiceGuidance hook
-export const useVoiceGuidance = importedUseVoiceGuidance;
+export interface VoiceSettings {
+  enabled: boolean;
+  volume: number;
+  rate: number;
+  pitch: number;
+  voice: SpeechSynthesisVoice | null;
+  autoReadPageContent: boolean;
+}
 
 interface VoiceGuidanceSystemProps {
   children: React.ReactNode;
@@ -12,7 +17,7 @@ interface VoiceGuidanceSystemProps {
   rate?: number;
   pitch?: number;
   autoReadPageContent?: boolean;
-  onSettingsChange?: (settings: any) => void;
+  onSettingsChange?: (settings: VoiceSettings) => void;
 }
 
 const VoiceGuidanceSystem: React.FC<VoiceGuidanceSystemProps> = ({
@@ -31,24 +36,33 @@ const VoiceGuidanceSystem: React.FC<VoiceGuidanceSystemProps> = ({
 
   // Update voice settings when props change
   useEffect(() => {
+    updateVoiceSettings({ 
+      enabled, 
+      volume, 
+      rate, 
+      pitch, 
+      autoReadPageContent 
+    });
+    
+    if (onSettingsChange) {
+      onSettingsChange({ 
+        enabled, 
+        volume, 
+        rate, 
+        pitch, 
+        voice: null, 
+        autoReadPageContent 
+      });
+    }
+    
+    // Announce when voice guidance is enabled
     if (enabled) {
-      updateVoiceSettings({ rate, pitch });
-      if (onSettingsChange) {
-        onSettingsChange({ enabled, volume, rate, pitch, autoReadPageContent });
-      }
+      speak("Voice guidance is now active", true);
     }
   }, [enabled, volume, rate, pitch, autoReadPageContent, onSettingsChange]);
-
-  // Auto-read page content if enabled
-  useEffect(() => {
-    if (enabled && autoReadPageContent) {
-      // This would need a more sophisticated implementation to extract
-      // meaningful content from the page to read aloud
-      // For now, we'll leave this as a placeholder
-    }
-  }, [enabled, autoReadPageContent]);
 
   return <>{children}</>;
 };
 
 export default VoiceGuidanceSystem;
+export type { VoiceSettings };

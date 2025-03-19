@@ -1,126 +1,66 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import {
-  Home,
-  Calendar,
-  ShoppingCart,
-  Pill,
-  Heart,
-  AlertTriangle,
-  Menu,
-  X,
-  Phone,
-  MapPin,
-  User,
-  Settings,
-} from "lucide-react";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { 
+  Home, 
+  Calendar, 
+  Map, 
+  Settings, 
+  User, 
+  Menu, 
+  X, 
+  Pill, 
+  Heart, 
+  Phone
+} from 'lucide-react';
 
-interface FloatingMenuProps {
-  className?: string;
-}
-
-const FloatingMenu = ({ className = "" }: FloatingMenuProps) => {
+const FloatingMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
 
   const menuItems = [
-    { icon: <Home className="h-5 w-5" />, label: "Home", path: "/" },
-    {
-      icon: <ShoppingCart className="h-5 w-5" />,
-      label: "Services",
-      path: "/request",
-    },
-    {
-      icon: <Pill className="h-5 w-5" />,
-      label: "Medication",
-      path: "/medications",
-    },
-    {
-      icon: <Heart className="h-5 w-5" />,
-      label: "Wellness",
-      path: "/wellness",
-    },
-    {
-      icon: <Calendar className="h-5 w-5" />,
-      label: "Events",
-      path: "/community-events",
-    },
-    {
-      icon: <AlertTriangle className="h-5 w-5" />,
-      label: "Emergency",
-      path: "/emergency-services",
-    },
-    {
-      icon: <Phone className="h-5 w-5" />,
-      label: "Contacts",
-      path: "/emergency-contacts",
-    },
-    {
-      icon: <MapPin className="h-5 w-5" />,
-      label: "Find Hub",
-      path: "/hub-finder",
-    },
-    {
-      icon: <User className="h-5 w-5" />,
-      label: "Profile",
-      path: "/profile",
-    },
-    {
-      icon: <Settings className="h-5 w-5" />,
-      label: "Settings",
-      path: "/settings",
-    },
+    { name: 'Home', icon: <Home className="h-5 w-5" />, path: '/' },
+    { name: 'Request', icon: <Calendar className="h-5 w-5" />, path: '/request' },
+    { name: 'Hubs', icon: <Map className="h-5 w-5" />, path: '/hub-finder' },
+    { name: 'Medications', icon: <Pill className="h-5 w-5" />, path: '/medications' },
+    { name: 'Profile', icon: <User className="h-5 w-5" />, path: '/profile' },
+    { name: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings' },
   ];
-
-  const handleNavigate = (path: string) => {
-    navigate(path);
-    setIsOpen(false);
-  };
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
 
   return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex flex-col items-end ${className}`}
-    >
+    <div className="fixed bottom-4 left-4 z-40 md:hidden">
+      <Button
+        variant="default"
+        size="icon"
+        className="h-14 w-14 rounded-full shadow-lg"
+        onClick={toggleMenu}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+      >
+        {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+      </Button>
+
       {isOpen && (
-        <div className="mb-4 bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="grid grid-cols-3 gap-1 p-2">
-            {menuItems.map((item, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                className="flex flex-col items-center justify-center h-20 w-20 rounded-lg hover:bg-gray-100"
-                onClick={() => handleNavigate(item.path)}
+        <div className="absolute bottom-20 left-0">
+          <div className="bg-white rounded-lg shadow-lg p-4 grid grid-cols-3 gap-2 w-[220px]">
+            {menuItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.path}
+                className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100"
+                onClick={() => setIsOpen(false)}
               >
-                <div className="text-primary">{item.icon}</div>
-                <span className="mt-1 text-xs">{item.label}</span>
-              </Button>
+                <div className="bg-primary/10 p-2 rounded-full mb-1">
+                  {item.icon}
+                </div>
+                <span className="text-xs">{item.name}</span>
+              </Link>
             ))}
           </div>
         </div>
       )}
-
-      <div className="flex space-x-2">
-        <Button
-          size="lg"
-          className="rounded-full h-14 w-14 bg-green-600 hover:bg-green-700 shadow-lg"
-          onClick={() => window.open("tel:911")}
-        >
-          <Phone className="h-6 w-6" />
-        </Button>
-
-        <Button
-          size="lg"
-          className="rounded-full h-14 w-14 shadow-lg"
-          onClick={toggleMenu}
-        >
-          {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </Button>
-      </div>
     </div>
   );
 };

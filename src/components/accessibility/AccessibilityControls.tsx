@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,15 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Volume2, Sun, Moon, Type, Maximize2, Settings } from "lucide-react";
-import VoiceGuidanceSystem, { VoiceSettings } from "./VoiceGuidanceSystem";
+import { Sun, Moon, Type, Maximize2, Settings } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export interface AccessibilitySettings {
   highContrast: boolean;
   largeText: boolean;
   simplifiedNavigation: boolean;
-  voiceGuidance: VoiceSettings;
+  voiceGuidance: {
+    enabled: boolean;
+    volume: number;
+    rate: number;
+    pitch: number;
+    voice: null;
+    autoReadPageContent: boolean;
+  };
 }
 
 interface AccessibilityControlsProps {
@@ -43,7 +49,7 @@ const AccessibilityControls = ({
   const [simplifiedNavigation, setSimplifiedNavigation] = useState(
     settings.simplifiedNavigation || false,
   );
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
+  const [voiceSettings, setVoiceSettings] = useState({
     enabled: false,
     volume: 1,
     rate: 1,
@@ -53,56 +59,73 @@ const AccessibilityControls = ({
     ...(settings.voiceGuidance || {}),
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { toast } = useToast();
 
-  const handleVoiceSettingsChange = (newVoiceSettings: VoiceSettings) => {
-    setVoiceSettings(newVoiceSettings);
-    updateSettings({
-      voiceGuidance: newVoiceSettings,
-    });
-  };
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('accessibilitySettings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setHighContrast(parsedSettings.highContrast || false);
+        setLargeText(parsedSettings.largeText || false);
+        setSimplifiedNavigation(parsedSettings.simplifiedNavigation || false);
+        setVoiceSettings({
+          enabled: parsedSettings.voiceGuidance?.enabled || false,
+          volume: parsedSettings.voiceGuidance?.volume || 1,
+          rate: parsedSettings.voiceGuidance?.rate || 1,
+          pitch: parsedSettings.voiceGuidance?.pitch || 1,
+          voice: null,
+          autoReadPageContent: parsedSettings.voiceGuidance?.autoReadPageContent || false,
+        });
+      } catch (error) {
+        console.error('Failed to parse accessibility settings:', error);
+      }
+    }
+  }, []);
 
-  const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
+  const updateSettings = () => {
     const updatedSettings: AccessibilitySettings = {
       highContrast,
       largeText,
       simplifiedNavigation,
       voiceGuidance: voiceSettings,
-      ...newSettings,
     };
 
-    onSettingsChange(updatedSettings);
+    // Save to localStorage
+    localStorage.setItem('accessibilitySettings', JSON.stringify(updatedSettings));
 
     // Apply settings to document
-    document.documentElement.classList.toggle(
-      "high-contrast",
-      updatedSettings.highContrast,
-    );
-    document.documentElement.classList.toggle(
-      "large-text",
-      updatedSettings.largeText,
-    );
-    document.documentElement.classList.toggle(
-      "simplified-nav",
-      updatedSettings.simplifiedNavigation,
-    );
+    document.documentElement.classList.toggle('high-contrast', updatedSettings.highContrast);
+    document.documentElement.classList.toggle('large-text', updatedSettings.largeText);
+    document.documentElement.classList.toggle('simplified-nav', updatedSettings.simplifiedNavigation);
+
+    // Call the callback
+    onSettingsChange(updatedSettings);
+
+    // Show toast notification
+    toast({
+      title: "Accessibility Settings Updated",
+      description: "Your accessibility preferences have been saved.",
+    });
   };
 
   const toggleHighContrast = () => {
     const newValue = !highContrast;
     setHighContrast(newValue);
-    updateSettings({ highContrast: newValue });
+    setTimeout(() => updateSettings(), 0);
   };
 
   const toggleLargeText = () => {
     const newValue = !largeText;
     setLargeText(newValue);
-    updateSettings({ largeText: newValue });
+    setTimeout(() => updateSettings(), 0);
   };
 
   const toggleSimplifiedNavigation = () => {
     const newValue = !simplifiedNavigation;
     setSimplifiedNavigation(newValue);
-    updateSettings({ simplifiedNavigation: newValue });
+    setTimeout(() => updateSettings(), 0);
   };
 
   return (
@@ -174,15 +197,6 @@ const AccessibilityControls = ({
           </Tooltip>
         </TooltipProvider>
 
-        <VoiceGuidanceSystem
-          enabled={voiceSettings.enabled}
-          volume={voiceSettings.volume}
-          rate={voiceSettings.rate}
-          pitch={voiceSettings.pitch}
-          autoReadPageContent={voiceSettings.autoReadPageContent}
-          onSettingsChange={handleVoiceSettingsChange}
-        />
-
         <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
           <DialogTrigger asChild>
             <Button
@@ -211,7 +225,7 @@ const AccessibilityControls = ({
                   checked={highContrast}
                   onCheckedChange={(checked) => {
                     setHighContrast(checked);
-                    updateSettings({ highContrast: checked });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
@@ -225,7 +239,7 @@ const AccessibilityControls = ({
                   checked={largeText}
                   onCheckedChange={(checked) => {
                     setLargeText(checked);
-                    updateSettings({ largeText: checked });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
@@ -239,7 +253,7 @@ const AccessibilityControls = ({
                   checked={simplifiedNavigation}
                   onCheckedChange={(checked) => {
                     setSimplifiedNavigation(checked);
-                    updateSettings({ simplifiedNavigation: checked });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                 />
               </div>
@@ -259,19 +273,7 @@ const AccessibilityControls = ({
                       voice: null,
                       autoReadPageContent: false,
                     });
-                    updateSettings({
-                      highContrast: false,
-                      largeText: false,
-                      simplifiedNavigation: false,
-                      voiceGuidance: {
-                        enabled: false,
-                        volume: 1,
-                        rate: 1,
-                        pitch: 1,
-                        voice: null,
-                        autoReadPageContent: false,
-                      },
-                    });
+                    setTimeout(() => updateSettings(), 0);
                   }}
                   variant="outline"
                   className="w-full"

@@ -1,357 +1,216 @@
-import { Suspense, lazy } from "react";
-import { useRoutes, Routes, Route, Navigate } from "react-router-dom";
-import Home from "./components/home";
-import ElderlyDashboard from "./pages/ElderlyDashboard";
-import routes from "tempo-routes";
+import React, { Suspense, useState, useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./lib/auth";
-import AdminRoutes from "./routes/AdminRoutes";
 
-// Lazy load pages for better performance
-const ServiceRequest = lazy(() => import("./pages/ServiceRequest"));
-const HelperProfile = lazy(() => import("./pages/HelperProfile"));
-const ServiceTracking = lazy(() => import("./pages/ServiceTracking"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Login = lazy(() => import("./pages/Login"));
-const Register = lazy(() => import("./pages/Register"));
-const HelperDashboard = lazy(() => import("./pages/HelperDashboard"));
-const HelperSchedule = lazy(() => import("./pages/HelperSchedule"));
-const HubDashboard = lazy(() => import("./pages/HubDashboard"));
-const ServiceReview = lazy(() => import("./pages/ServiceReview"));
-const ServiceHistory = lazy(() => import("./pages/ServiceHistory"));
-const MedicationReminders = lazy(() => import("./pages/MedicationReminders"));
-const WellnessChecks = lazy(() => import("./pages/WellnessChecks"));
-const CaregiverDashboard = lazy(() => import("./pages/CaregiverDashboard"));
-const CommunityEvents = lazy(() => import("./pages/CommunityEvents"));
-const EmergencyServices = lazy(() => import("./pages/EmergencyServices"));
-const EmergencyContacts = lazy(() => import("./pages/EmergencyContacts"));
-const HubFinder = lazy(() => import("./pages/HubFinder"));
-const DirectCommunication = lazy(() => import("./pages/DirectCommunication"));
-const ServiceBundles = lazy(() => import("./pages/ServiceBundles"));
-const FamilyPortal = lazy(() => import("./pages/FamilyPortal"));
-const AddSeniorProfile = lazy(() => import("./pages/AddSeniorProfile"));
-const LocalBusinessDirectory = lazy(
-  () => import("./pages/LocalBusinessDirectory"),
-);
-const SocialConnections = lazy(() => import("./pages/SocialConnections"));
-const HelperSkillsDirectory = lazy(
-  () => import("./pages/HelperSkillsDirectory"),
+// Import components directly instead of using lazy loading for critical components
+import Home from "./components/home";
+import Login from "./pages/Login";
+
+// Use lazy loading for non-critical components
+const ElderlyDashboard = React.lazy(() => import("./pages/ElderlyDashboard"));
+const HelperDashboard = React.lazy(() => import("./pages/HelperDashboard"));
+const AdminDashboard = React.lazy(() => import("./pages/HubDashboard"));
+const Profile = React.lazy(() => import("./pages/Profile"));
+const Settings = React.lazy(() => import("./pages/Settings"));
+const Register = React.lazy(() => import("./pages/Register"));
+
+// Loading component with timeout detection
+const LoadingScreen = ({ timeout = 10000 }) => {
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTimedOut(true);
+    }, timeout);
+    
+    return () => clearTimeout(timer);
+  }, [timeout]);
+  
+  if (isTimedOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Loading Timeout</h2>
+          <p className="text-gray-700 mb-4">
+            The application is taking longer than expected to load. This might be due to a slow connection or a temporary issue.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-lg">Loading...</p>
+      </div>
+    </div>
+  );
+};
+
+// Error fallback component
+const ErrorFallback = ({ error }: { error: Error }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+      <h2 className="text-xl font-bold text-red-600 mb-4">Something went wrong</h2>
+      <p className="text-gray-700 mb-4">
+        The application encountered an error. Please try refreshing the page.
+      </p>
+      <div className="bg-red-50 p-3 rounded-md mb-4 overflow-auto max-h-40">
+        <p className="text-red-700 font-mono text-sm">
+          {error.message}
+        </p>
+      </div>
+      <button 
+        onClick={() => window.location.reload()}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+      >
+        Refresh Page
+      </button>
+    </div>
+  </div>
 );
 
 function App() {
-  const { user, userDetails, isLoading } = useAuth();
+  const { user, userDetails, isLoading, authError } = useAuth();
+  const [hasError, setHasError] = useState<Error | null>(null);
+
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      console.error("Auth error in App:", authError);
+      setHasError(authError);
+    }
+  }, [authError]);
+
+  // Error boundary
+  if (hasError) {
+    return <ErrorFallback error={hasError} />;
+  }
+
+  // Loading state
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   // Function to determine which dashboard to show based on user role
   const getDashboardComponent = () => {
-    console.log("getDashboardComponent - user:", user?.id);
-    console.log("getDashboardComponent - userDetails:", userDetails);
-
     if (!user) {
-      console.log("No user, redirecting to login");
       return <Navigate to="/login" />;
     }
 
-    if (userDetails) {
-      console.log("User role:", userDetails.role);
-      switch (userDetails.role) {
-        case "customer":
-          return <ElderlyDashboard />;
-        case "helper":
-          return <HelperDashboard />;
-        case "admin":
-          return <HubDashboard />;
-        default:
-          console.log("Unknown role, defaulting to elderly dashboard");
-          return <ElderlyDashboard />;
+    try {
+      if (userDetails) {
+        switch (userDetails.role) {
+          case "customer":
+            return <ElderlyDashboard />;
+          case "helper":
+            return <HelperDashboard />;
+          case "admin":
+            return <AdminDashboard />;
+          default:
+            return <ElderlyDashboard />;
+        }
       }
+      
+      // Default to elderly dashboard if role not determined yet
+      return <ElderlyDashboard />;
+    } catch (error) {
+      console.error("Error rendering dashboard:", error);
+      setHasError(error instanceof Error ? error : new Error(String(error)));
+      return <ErrorFallback error={error instanceof Error ? error : new Error(String(error))} />;
     }
-
-    // Default to elderly dashboard if role not determined yet
-    console.log("No user details yet, defaulting to elderly dashboard");
-    return <ElderlyDashboard />;
-  };
-
-  // Protected route component
-  const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-    if (isLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-lg">Loading...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (!user) return <Navigate to="/login" />;
-    return children;
-  };
-
-  // Public route component - redirects to dashboard if already logged in
-  const PublicRoute = ({ children }: { children: JSX.Element }) => {
-    if (isLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-lg">Loading...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (user) return <Navigate to="/" />;
-    return children;
   };
 
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-lg">Loading...</p>
-          </div>
-        </div>
-      }
-    >
-      <>
-        <Routes>
-          <Route path="/" element={getDashboardComponent()} />
-          <Route path="/home" element={<Home />} />
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/request"
-            element={
-              <ProtectedRoute>
-                <ServiceRequest />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/helper/:id"
-            element={
-              <ProtectedRoute>
-                <HelperProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/helper-dashboard"
-            element={
-              <ProtectedRoute>
-                <HelperDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/helper-schedule"
-            element={
-              <ProtectedRoute>
-                <HelperSchedule />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/hub-dashboard"
-            element={
-              <ProtectedRoute>
-                <HubDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute>
-                <AdminRoutes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tracking/:id"
-            element={
-              <ProtectedRoute>
-                <ServiceTracking />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/review/:id"
-            element={
-              <ProtectedRoute>
-                <ServiceReview />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/service-history"
-            element={
-              <ProtectedRoute>
-                <ServiceHistory />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/medications"
-            element={
-              <ProtectedRoute>
-                <MedicationReminders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/wellness"
-            element={
-              <ProtectedRoute>
-                <WellnessChecks />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/caregiver"
-            element={
-              <ProtectedRoute>
-                <CaregiverDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/community-events"
-            element={
-              <ProtectedRoute>
-                <CommunityEvents />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/emergency-services"
-            element={
-              <ProtectedRoute>
-                <EmergencyServices />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/emergency-contacts"
-            element={
-              <ProtectedRoute>
-                <EmergencyContacts />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/hub-finder"
-            element={
-              <ProtectedRoute>
-                <HubFinder />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/direct-communication"
-            element={
-              <ProtectedRoute>
-                <DirectCommunication />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/service-bundles"
-            element={
-              <ProtectedRoute>
-                <ServiceBundles />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/family-portal"
-            element={
-              <ProtectedRoute>
-                <FamilyPortal />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/family-portal/:seniorId"
-            element={
-              <ProtectedRoute>
-                <FamilyPortal />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/family-portal/add-senior"
-            element={
-              <ProtectedRoute>
-                <AddSeniorProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/local-businesses"
-            element={
-              <ProtectedRoute>
-                <LocalBusinessDirectory />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/social-connections"
-            element={
-              <ProtectedRoute>
-                <SocialConnections />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/helper-skills"
-            element={
-              <ProtectedRoute>
-                <HelperSkillsDirectory />
-              </ProtectedRoute>
-            }
-          />
-          {import.meta.env.VITE_TEMPO === "true" && (
-            <Route path="/tempobook/*" />
-          )}
-        </Routes>
-        {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
-      </>
+    <Suspense fallback={<LoadingScreen />}>
+      <Routes>
+        <Route path="/" element={getDashboardComponent()} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+        <Route 
+          path="/register" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              {user ? <Navigate to="/" /> : <Register />}
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              {user ? <Profile /> : <Navigate to="/login" />}
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              {user ? <Settings /> : <Navigate to="/login" />}
+            </Suspense>
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </Suspense>
   );
 }
 
-export default App;
+// Wrap App with error boundary
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+    
+    // Log to localStorage for debugging
+    try {
+      const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
+      errors.push({
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString(),
+      });
+      localStorage.setItem('app_errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
+    } catch (e) {
+      console.error('Error logging to localStorage:', e);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback error={this.state.error!} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+// Export the wrapped component
+export default function AppWithErrorBoundary() {
+  return (
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  );
+}

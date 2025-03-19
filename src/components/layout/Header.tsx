@@ -1,12 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, LogIn, Menu } from "lucide-react";
-import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
-import LanguageSelector from "@/components/language/LanguageSelector";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,13 +31,6 @@ const Header = ({
   const { user, userDetails, signOut } = useAuth();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
-  const { t, i18n } = useTranslation();
-
-  // Force re-render when language changes
-  useEffect(() => {
-    // This is just to ensure the component re-renders when language changes
-    // The dependency array includes i18n.language to trigger re-render
-  }, [i18n.language]);
 
   // Use provided values or fall back to user details from auth
   const displayName = userName || userDetails?.full_name || "Guest";
@@ -75,32 +65,17 @@ const Header = ({
           size="icon"
           className="md:hidden"
           onClick={onMenuToggle}
-          aria-label={t("common.toggleMenu")}
+          aria-label="Toggle menu"
         >
           <Menu className="h-6 w-6" />
         </Button>
 
         <h1 className="text-2xl md:text-3xl font-bold text-primary">
-          {t("app.name")}
+          Senior Assist
         </h1>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="hidden md:block">
-          <div className="bg-red-600 rounded-full h-12 w-12 flex items-center justify-center shadow-lg">
-            <Button
-              variant="ghost"
-              className="h-full w-full text-white font-bold text-lg hover:bg-red-700 rounded-full"
-              aria-label={t("emergency.sos")}
-            >
-              {t("emergency.sos")}
-            </Button>
-          </div>
-        </div>
-
-        <LanguageSelector />
-        <NotificationsDropdown />
-
         {/* Login/Logout Button */}
         {user ? (
           <Button
@@ -110,7 +85,7 @@ const Header = ({
             onClick={() => setShowLogoutConfirm(true)}
           >
             <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("auth.logout")}</span>
+            <span className="hidden sm:inline">Logout</span>
           </Button>
         ) : (
           <Button
@@ -120,7 +95,7 @@ const Header = ({
             onClick={handleLogin}
           >
             <LogIn className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("auth.login")}</span>
+            <span className="hidden sm:inline">Login</span>
           </Button>
         )}
 
@@ -136,7 +111,7 @@ const Header = ({
           </Avatar>
           <div className="hidden md:block">
             <p className="text-base font-medium">{displayName}</p>
-            <p className="text-xs text-gray-500">{t("navigation.profile")}</p>
+            <p className="text-xs text-gray-500">Profile</p>
           </div>
         </div>
       </div>
@@ -146,19 +121,16 @@ const Header = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("auth.logoutConfirmTitle", "Confirm Logout")}
+              Confirm Logout
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(
-                "auth.logoutConfirmMessage",
-                "Are you sure you want to log out of your account?",
-              )}
+              Are you sure you want to log out of your account?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleLogout}>
-              {t("auth.logout")}
+              Logout
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

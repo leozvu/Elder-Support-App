@@ -1,316 +1,150 @@
-import React, { useState } from "react";
-import Layout from "@/components/layout/Layout";
-import ServiceRequestCard from "@/components/dashboard/ServiceRequestCard";
-import ActiveRequestStatus from "@/components/dashboard/ActiveRequestStatus";
-import NearbyHubsMap from "@/components/dashboard/NearbyHubsMap";
-import ServiceRequestFlow from "@/components/service/ServiceRequestFlow";
-import SOSButton from "@/components/emergency/SOSButton";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  X,
-  HelpCircle,
-  Calendar,
-  Clock,
-  Pill,
-  Activity,
-  Users,
-  Settings as SettingsIcon,
-} from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useAccessibility } from "@/components/accessibility/AccessibilityContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle, Calendar, Clock, HeartPulse, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import QuickAccessPanel from "@/components/dashboard/QuickAccessPanel";
 
-interface ElderlyDashboardProps {
-  userName?: string;
-  userAvatar?: string;
-  hasActiveRequest?: boolean;
-}
-
-const ElderlyDashboard = ({
-  userName = "Martha Johnson",
-  userAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
-  hasActiveRequest = false,
-}: ElderlyDashboardProps) => {
+const ElderlyDashboard = () => {
+  const { userDetails, signOut } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const navigate = useNavigate();
-  const [showRequestFlow, setShowRequestFlow] = useState(false);
-  const [activeRequest, setActiveRequest] = useState(hasActiveRequest);
-  // Get accessibility settings from context
-  const accessibilityContext = useAccessibility();
-  const simplifiedNavigation =
-    accessibilityContext?.settings?.simplifiedNavigation || false;
-
-  const handleServiceSelect = (serviceId: string) => {
-    setShowRequestFlow(true);
+  
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      setError(error instanceof Error ? error : new Error(String(error)));
+    }
   };
-
-  const handleRequestComplete = (data: any) => {
-    setShowRequestFlow(false);
-    setActiveRequest(true);
-  };
-
-  const handleCloseRequestFlow = () => {
-    setShowRequestFlow(false);
-  };
+  
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-4">
+        <div className="max-w-4xl mx-auto">
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-red-600 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Error
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">An error occurred while loading the dashboard:</p>
+              <div className="bg-red-50 p-3 rounded-md mb-4">
+                <p className="text-red-700">{error.message}</p>
+              </div>
+              <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Layout userName={userName} userAvatar={userAvatar}>
-      <div className="container mx-auto px-4 py-6 space-y-8">
-        {/* Main Dashboard Content */}
-        {!showRequestFlow ? (
-          <>
-            {/* Active Request Status (if any) */}
-            {activeRequest && (
-              <section className="mb-8">
-                <ActiveRequestStatus />
-              </section>
-            )}
-
-            {/* Service Request Card */}
-            <section className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold">Request Services</h2>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="simplified-ui"
-                      >
-                        <HelpCircle className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Click on a service to request assistance</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-4xl mx-auto">
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle>Welcome, {userDetails?.full_name || "User"}!</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">How can we assist you today?</p>
+            <Button onClick={handleLogout} variant="outline" className="mt-2">Logout</Button>
+          </CardContent>
+        </Card>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Request Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Need help with daily tasks? Request assistance from our helpers.</p>
+              <Button onClick={() => navigate("/request")}>Request Service</Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                Upcoming Services
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500 italic">No upcoming services scheduled.</p>
+              <Button variant="outline" className="mt-4" onClick={() => navigate("/service-history")}>
+                View Service History
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <HeartPulse className="h-5 w-5 text-primary" />
+                Health & Wellness
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Track your medications and wellness activities.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => navigate("/medications")}>
+                  Medications
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/wellness")}>
+                  Wellness
+                </Button>
               </div>
-              <ServiceRequestCard
-                onServiceSelect={handleServiceSelect}
-                simplified={simplifiedNavigation}
-              />
-            </section>
-
-            {/* Health Monitoring Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              {/* Medication Reminders */}
-              <section>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xl font-semibold">Medications</h2>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="simplified-ui"
-                        >
-                          <HelpCircle className="h-5 w-5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Track your medication schedule</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <React.Suspense
-                  fallback={
-                    <div className="p-4 border rounded-lg">
-                      Loading medication reminders...
-                    </div>
-                  }
-                >
-                  {React.createElement(
-                    React.lazy(
-                      () =>
-                        import(
-                          "@/components/medication/MedicationReminderCard"
-                        ),
-                    ),
-                    {
-                      onMarkTaken: (id) =>
-                        console.log(`Medication ${id} marked as taken`),
-                      onAddMedication: () =>
-                        console.log("Add medication clicked"),
-                    },
-                  )}
-                </React.Suspense>
-              </section>
-
-              {/* Wellness Checks */}
-              <section>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xl font-semibold">Wellness</h2>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="simplified-ui"
-                        >
-                          <HelpCircle className="h-5 w-5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Monitor your health metrics</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <React.Suspense
-                  fallback={
-                    <div className="p-4 border rounded-lg">
-                      Loading wellness checks...
-                    </div>
-                  }
-                >
-                  {React.createElement(
-                    React.lazy(
-                      () => import("@/components/wellness/WellnessCheckCard"),
-                    ),
-                    {
-                      onCheckIn: () => console.log("Wellness check-in clicked"),
-                    },
-                  )}
-                </React.Suspense>
-              </section>
-            </div>
-
-            {/* Nearby Hubs Map */}
-            <section className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold">Nearby Support Hubs</h2>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="simplified-ui"
-                      >
-                        <HelpCircle className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>These are support centers near your location</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <NearbyHubsMap />
-            </section>
-
-            {/* Community Events Section */}
-            <section className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold">Community Events</h2>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="simplified-ui"
-                      >
-                        <HelpCircle className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Local events you might be interested in</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <React.Suspense
-                fallback={
-                  <div className="p-4 border rounded-lg">
-                    Loading community events...
-                  </div>
-                }
-              >
-                {React.createElement(
-                  React.lazy(
-                    () =>
-                      import("@/components/dashboard/CommunityEventsSection"),
-                  ),
-                  {
-                    onViewAll: () =>
-                      (window.location.href = "/community-events"),
-                    onRegister: (id) =>
-                      console.log(`Registered for event ${id}`),
-                    maxEvents: 2,
-                  },
-                )}
-              </React.Suspense>
-            </section>
-
-            {/* Quick Access Feature Navigation */}
-            <section className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold">Quick Access</h2>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="simplified-ui"
-                      >
-                        <HelpCircle className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Quick access to important features</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <QuickAccessPanel role="elderly" />
-            </section>
-
-            {/* Fixed SOS Button (Mobile Only) */}
-            <div className="fixed bottom-6 right-6 md:hidden z-10">
-              <SOSButton userRole="elderly" />
-            </div>
-          </>
-        ) : (
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="icon"
-              className="absolute top-0 right-0 z-10"
-              onClick={handleCloseRequestFlow}
-            >
-              <X className="h-6 w-6" />
-            </Button>
-            <ServiceRequestFlow onComplete={handleRequestComplete} />
-          </div>
-        )}
-
-        {/* Quick Action Button (when no active flow) */}
-        {!showRequestFlow && !activeRequest && (
-          <div className="fixed bottom-6 left-6 z-10">
-            <Button
-              size="lg"
-              className="rounded-full h-14 w-14 shadow-lg"
-              onClick={() => setShowRequestFlow(true)}
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Nearby Support
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Find support hubs and community resources near you.</p>
+              <Button variant="outline" onClick={() => navigate("/hub-finder")}>
+                Find Support Hubs
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 
