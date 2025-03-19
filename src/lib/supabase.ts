@@ -1,97 +1,61 @@
 import { createClient } from '@supabase/supabase-js';
+import { logError } from './errorLogging';
 
-// Initialize Supabase client with better error handling
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Get environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Log configuration issues
+// Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase configuration is missing. Using demo mode.');
-  // Set a flag in localStorage to indicate configuration issues
-  localStorage.setItem('supabaseConfigIssue', 'true');
+  console.error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-// Create a custom fetch function with timeout and error handling
-const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
-  // Create an abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-  
-  try {
-    // If we're in demo mode, simulate a successful response
-    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
-      clearTimeout(timeoutId);
-      return new Response(JSON.stringify({ data: null }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error: any) {
-    clearTimeout(timeoutId);
-    
-    console.error('Supabase fetch error:', error);
-    
-    // Determine if it's a timeout
-    const isTimeout = error.name === 'AbortError';
-    
-    // Return a mock response to prevent crashes
-    return new Response(
-      JSON.stringify({ 
-        error: isTimeout ? 'Request timed out' : 'Network error',
-        details: error.message
-      }), 
-      {
-        status: isTimeout ? 408 : 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-  }
-};
-
-// Create the Supabase client with robust error handling
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Create the Supabase client with proper configuration
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true
   },
   global: {
-    fetch: customFetch,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    fetch: fetch.bind(globalThis) // Ensure fetch is properly bound
   },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
 });
 
-// Test the connection
-export const testSupabaseConnection = async () => {
+// Test the connection and log the result
+export async function testConnection() {
   try {
-    // If we're in demo mode, return a simulated success
-    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
-      return { success: true, demo: true };
-    }
-    
-    const start = performance.now();
-    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
-    const end = performance.now();
-    
+    const { data, error } = await supabase
+      .from('users')
+      .select('count', { count: 'exact', head: true });
+      
     if (error) {
       console.error('Supabase connection test failed:', error.message);
-      return { success: false, message: error.message, latency: end - start };
+      return false;
     }
     
-    console.log(`Supabase connection successful! Latency: ${Math.round(end - start)}ms`);
-    return { success: true, latency: end - start };
+    console.log('Supabase connection successful');
+    return true;
   } catch (error) {
-    console.error('Exception during Supabase connection test:', error);
-    return { success: false, message: String(error), latency: null };
+    console.error('Supabase connection test exception:', error);
+    return false;
   }
-};
+}
 
 // Run the test immediately
-testSupabaseConnection().then(result => {
-  localStorage.setItem('supabaseConnectionTest', JSON.stringify(result));
+testConnection().then(connected => {
+  if (!connected) {
+    console.warn('Using mock data due to connection failure');
+    localStorage.setItem('use_mock_data', 'true');
+  } else {
+    localStorage.setItem('use_mock_data', 'false');
+  }
 });

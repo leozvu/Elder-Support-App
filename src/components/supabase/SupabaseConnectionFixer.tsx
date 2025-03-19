@@ -1,244 +1,197 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
+import React, { useState } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
+import { testSupabaseConnection } from '@/lib/supabase';
 
 const SupabaseConnectionFixer = () => {
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [deploymentResult, setDeploymentResult] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
-  const { toast } = useToast();
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseKey, setSupabaseKey] = useState('');
+  const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+  const [isFixing, setIsFixing] = useState(false);
 
-  const handleDeployEdgeFunctions = async () => {
+  const handleTest = async () => {
+    if (!supabaseUrl || !supabaseKey) {
+      setMessage('Please enter both Supabase URL and Anon Key');
+      setStatus('error');
+      return;
+    }
+
+    setStatus('testing');
+    setMessage('');
+
     try {
-      setIsDeploying(true);
-      setDeploymentResult(null);
+      // Store the values temporarily for testing
+      localStorage.setItem('temp_supabase_url', supabaseUrl);
+      localStorage.setItem('temp_supabase_key', supabaseKey);
 
-      // First, test if we can reach Supabase at all
-      try {
-        const { data, error } = await supabase
-          .from("users")
-          .select("count", { count: "exact", head: true });
+      // Test the connection
+      const result = await testSupabaseConnection();
 
-        if (error) {
-          console.warn("Database connection test failed:", error.message);
-        } else {
-          console.log("Database connection successful!");
-        }
-      } catch (dbError) {
-        console.error("Exception during database test:", dbError);
+      if (result.success) {
+        setStatus('success');
+        setMessage('Connection successful! You can now use these credentials.');
+      } else {
+        setStatus('error');
+        setMessage(`Connection failed: ${result.message}`);
       }
 
-      // Attempt to invoke the test-connection function
-      try {
-        const { data, error } = await supabase.functions.invoke(
-          "test-connection",
-          {
-            method: "POST",
-          },
-        );
-
-        if (error) {
-          console.error("Error invoking test-connection function:", error);
-          setDeploymentResult({
-            success: false,
-            message: `Edge function test failed: ${error.message}`,
-          });
-        } else {
-          console.log("Edge function test successful:", data);
-          setDeploymentResult({
-            success: true,
-            message: "Edge functions are working correctly!",
-          });
-        }
-      } catch (edgeError: any) {
-        console.error("Exception invoking edge function:", edgeError);
-        setDeploymentResult({
-          success: false,
-          message: `Edge function exception: ${edgeError.message}`,
-        });
-      }
-    } catch (error: any) {
-      console.error("Error in deployment process:", error);
-      setDeploymentResult({
-        success: false,
-        message: `Deployment process error: ${error.message}`,
-      });
-    } finally {
-      setIsDeploying(false);
+      // Clean up temporary values
+      localStorage.removeItem('temp_supabase_url');
+      localStorage.removeItem('temp_supabase_key');
+    } catch (error) {
+      setStatus('error');
+      setMessage(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Clean up temporary values
+      localStorage.removeItem('temp_supabase_url');
+      localStorage.removeItem('temp_supabase_key');
     }
   };
 
-  const handleRecreateUsers = async () => {
+  const handleReset = () => {
+    // Clear any stored connection test results
+    localStorage.removeItem('supabaseConnectionTest');
+    
+    // Reset the form
+    setSupabaseUrl('');
+    setSupabaseKey('');
+    setStatus('idle');
+    setMessage('');
+  };
+
+  const handleFixCommonIssues = async () => {
+    setIsFixing(true);
+    
     try {
-      setIsDeploying(true);
-      setDeploymentResult(null);
-
-      toast({
-        title: "Recreating demo users",
-        description: "This may take a few moments...",
-      });
-
-      // Call the recreate-demo-users edge function
-      const { data, error } = await supabase.functions.invoke(
-        "recreate-demo-users",
-        {
-          body: {},
-        },
+      // Clear cached data
+      localStorage.removeItem('supabaseConnectionTest');
+      
+      // Clear any error logs related to Supabase
+      const errorLogs = JSON.parse(localStorage.getItem('errorLogs') || '[]');
+      const filteredLogs = errorLogs.filter((log: any) => 
+        !log.context.includes('Supabase') && !log.error.includes('Supabase')
       );
-
-      if (error) {
-        console.error("Error recreating demo users:", error);
-        setDeploymentResult({
-          success: false,
-          message: `Failed to recreate users: ${error.message}`,
-        });
-        toast({
-          variant: "destructive",
-          title: "Error recreating demo users",
-          description: error.message || "Failed to recreate users",
-        });
+      localStorage.setItem('errorLogs', JSON.stringify(filteredLogs));
+      
+      // Force a new connection test
+      const result = await testSupabaseConnection();
+      
+      if (result.success) {
+        setStatus('success');
+        setMessage('Connection issues fixed successfully!');
       } else {
-        console.log("Demo users recreated successfully:", data);
-        setDeploymentResult({
-          success: true,
-          message: "Demo users recreated successfully!",
-        });
-        toast({
-          title: "Success",
-          description: "Demo users have been recreated successfully",
-        });
-
-        // Display credentials toast
-        setTimeout(() => {
-          toast({
-            title: "Demo Credentials",
-            description:
-              "Senior: martha@example.com / Helper: helper@example.com / Admin: admin@example.com (all use password123)",
-            duration: 10000,
-          });
-        }, 1000);
+        setStatus('error');
+        setMessage(`Automatic fix failed: ${result.message}`);
       }
-    } catch (error: any) {
-      console.error("Exception recreating demo users:", error);
-      setDeploymentResult({
-        success: false,
-        message: `Exception: ${error.message}`,
-      });
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
-      });
+    } catch (error) {
+      setStatus('error');
+      setMessage(`Error during fix: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsDeploying(false);
+      setIsFixing(false);
     }
   };
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle>Supabase Connection Fixer</CardTitle>
+        <CardTitle>Connection Fixer</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-amber-800">
-                  Connection Issues
-                </h3>
-                <p className="text-amber-700 text-sm mt-1">
-                  If you're experiencing connection issues with Supabase, try
-                  the following steps to fix them:
-                </p>
-                <ol className="list-decimal pl-5 mt-2 text-sm text-amber-700 space-y-1">
-                  <li>Test edge functions to verify connectivity</li>
-                  <li>Recreate demo users if the database is empty</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-6">
-            <div>
-              <h3 className="text-lg font-medium mb-2">Test Edge Functions</h3>
-              <p className="text-gray-600 mb-4">
-                This will test if your edge functions are properly deployed and
-                accessible.
-              </p>
-              <Button
-                onClick={handleDeployEdgeFunctions}
-                disabled={isDeploying}
-                className="w-full"
-              >
-                {isDeploying ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testing Edge Functions...
-                  </>
-                ) : (
-                  "Test Edge Functions"
-                )}
-              </Button>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-medium mb-2">Recreate Demo Users</h3>
-              <p className="text-gray-600 mb-4">
-                This will recreate the demo users in your Supabase database.
-              </p>
-              <Button
-                onClick={handleRecreateUsers}
-                disabled={isDeploying}
-                className="w-full"
-              >
-                {isDeploying ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Recreating Demo Users...
-                  </>
-                ) : (
-                  "Recreate Demo Users"
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {deploymentResult && (
-            <div
-              className={`p-4 rounded-md ${deploymentResult.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
+        <div className="space-y-4">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Connection Issues</AlertTitle>
+            <AlertDescription>
+              If you're experiencing connection issues with Supabase, you can try the automatic fix or manually update your credentials.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+            <h3 className="font-medium mb-4">Automatic Fix</h3>
+            <p className="text-sm mb-4">
+              This will attempt to fix common connection issues by clearing cached data and testing the connection again.
+            </p>
+            <Button 
+              onClick={handleFixCommonIssues} 
+              disabled={isFixing}
+              className="w-full"
             >
-              <div className="flex items-start">
-                {deploymentResult.success ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
-                )}
-                <div>
-                  <h3
-                    className={`font-medium ${deploymentResult.success ? "text-green-800" : "text-red-800"}`}
-                  >
-                    {deploymentResult.success ? "Success" : "Error"}
-                  </h3>
-                  <p
-                    className={`text-sm mt-1 ${deploymentResult.success ? "text-green-700" : "text-red-700"}`}
-                  >
-                    {deploymentResult.message}
-                  </p>
-                </div>
+              {isFixing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Fixing Issues...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Fix Common Issues
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <div className="border-t pt-4">
+            <h3 className="font-medium mb-4">Manual Configuration</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="supabase-url">Supabase URL</Label>
+                <Input
+                  id="supabase-url"
+                  value={supabaseUrl}
+                  onChange={(e) => setSupabaseUrl(e.target.value)}
+                  placeholder="https://your-project.supabase.co"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="supabase-key">Supabase Anon Key</Label>
+                <Input
+                  id="supabase-key"
+                  value={supabaseKey}
+                  onChange={(e) => setSupabaseKey(e.target.value)}
+                  placeholder="your-anon-key"
+                  type="password"
+                />
               </div>
             </div>
+          </div>
+          
+          {message && (
+            <Alert variant={status === 'success' ? 'default' : 'destructive'}>
+              {status === 'success' ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" />
+              )}
+              <AlertTitle>{status === 'success' ? 'Success' : 'Error'}</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
           )}
         </div>
       </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="outline" onClick={handleReset}>
+          Reset
+        </Button>
+        <Button 
+          onClick={handleTest} 
+          disabled={status === 'testing' || !supabaseUrl || !supabaseKey}
+        >
+          {status === 'testing' ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Testing...
+            </>
+          ) : (
+            'Test Connection'
+          )}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };

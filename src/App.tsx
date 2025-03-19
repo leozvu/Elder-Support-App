@@ -1,6 +1,9 @@
 import React, { Suspense, useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./lib/auth";
+import ErrorBoundary from "./components/error/ErrorBoundary";
+import AccessibilityWrapper from "./components/accessibility/AccessibilityWrapper";
+import DatabaseStatus from "./components/database/DatabaseStatus";
 
 // Import components directly instead of using lazy loading for critical components
 import Home from "./components/home";
@@ -13,6 +16,10 @@ const AdminDashboard = React.lazy(() => import("./pages/HubDashboard"));
 const Profile = React.lazy(() => import("./pages/Profile"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Register = React.lazy(() => import("./pages/Register"));
+const Diagnostics = React.lazy(() => import("./pages/Diagnostics"));
+const SupabaseDiagnostic = React.lazy(() => import("./pages/SupabaseDiagnostic"));
+const SystemDiagnostics = React.lazy(() => import("./pages/SystemDiagnostics"));
+const DatabaseDiagnostics = React.lazy(() => import("./pages/DatabaseDiagnostics"));
 
 // Loading component with timeout detection
 const LoadingScreen = ({ timeout = 10000 }) => {
@@ -55,29 +62,6 @@ const LoadingScreen = ({ timeout = 10000 }) => {
   );
 };
 
-// Error fallback component
-const ErrorFallback = ({ error }: { error: Error }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-      <h2 className="text-xl font-bold text-red-600 mb-4">Something went wrong</h2>
-      <p className="text-gray-700 mb-4">
-        The application encountered an error. Please try refreshing the page.
-      </p>
-      <div className="bg-red-50 p-3 rounded-md mb-4 overflow-auto max-h-40">
-        <p className="text-red-700 font-mono text-sm">
-          {error.message}
-        </p>
-      </div>
-      <button 
-        onClick={() => window.location.reload()}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
-      >
-        Refresh Page
-      </button>
-    </div>
-  </div>
-);
-
 function App() {
   const { user, userDetails, isLoading, authError } = useAuth();
   const [hasError, setHasError] = useState<Error | null>(null);
@@ -89,16 +73,6 @@ function App() {
       setHasError(authError);
     }
   }, [authError]);
-
-  // Error boundary
-  if (hasError) {
-    return <ErrorFallback error={hasError} />;
-  }
-
-  // Loading state
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
 
   // Function to determine which dashboard to show based on user role
   const getDashboardComponent = () => {
@@ -125,92 +99,111 @@ function App() {
     } catch (error) {
       console.error("Error rendering dashboard:", error);
       setHasError(error instanceof Error ? error : new Error(String(error)));
-      return <ErrorFallback error={error instanceof Error ? error : new Error(String(error))} />;
+      return null;
     }
   };
 
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <Routes>
-        <Route path="/" element={getDashboardComponent()} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
-        <Route 
-          path="/register" 
-          element={
-            <Suspense fallback={<LoadingScreen />}>
-              {user ? <Navigate to="/" /> : <Register />}
-            </Suspense>
-          } 
-        />
-        <Route 
-          path="/profile" 
-          element={
-            <Suspense fallback={<LoadingScreen />}>
-              {user ? <Profile /> : <Navigate to="/login" />}
-            </Suspense>
-          } 
-        />
-        <Route 
-          path="/settings" 
-          element={
-            <Suspense fallback={<LoadingScreen />}>
-              {user ? <Settings /> : <Navigate to="/login" />}
-            </Suspense>
-          } 
-        />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Suspense>
+    <AccessibilityWrapper>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/" element={
+            <ErrorBoundary context="Dashboard">
+              {getDashboardComponent()}
+            </ErrorBoundary>
+          } />
+          <Route path="/home" element={
+            <ErrorBoundary context="Home">
+              <Home />
+            </ErrorBoundary>
+          } />
+          <Route path="/login" element={
+            <ErrorBoundary context="Login">
+              {user ? <Navigate to="/" /> : <Login />}
+            </ErrorBoundary>
+          } />
+          <Route 
+            path="/register" 
+            element={
+              <ErrorBoundary context="Register">
+                <Suspense fallback={<LoadingScreen />}>
+                  {user ? <Navigate to="/" /> : <Register />}
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ErrorBoundary context="Profile">
+                <Suspense fallback={<LoadingScreen />}>
+                  {user ? <Profile /> : <Navigate to="/login" />}
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ErrorBoundary context="Settings">
+                <Suspense fallback={<LoadingScreen />}>
+                  {user ? <Settings /> : <Navigate to="/login" />}
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/diagnostics" 
+            element={
+              <ErrorBoundary context="Diagnostics">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Diagnostics />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/supabase-diagnostic" 
+            element={
+              <ErrorBoundary context="SupabaseDiagnostic">
+                <Suspense fallback={<LoadingScreen />}>
+                  <SupabaseDiagnostic />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/system-diagnostics" 
+            element={
+              <ErrorBoundary context="SystemDiagnostics">
+                <Suspense fallback={<LoadingScreen />}>
+                  <SystemDiagnostics />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/database-diagnostics" 
+            element={
+              <ErrorBoundary context="DatabaseDiagnostics">
+                <Suspense fallback={<LoadingScreen />}>
+                  <DatabaseDiagnostics />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+        <DatabaseStatus />
+      </Suspense>
+    </AccessibilityWrapper>
   );
 }
 
-// Wrap App with error boundary
-class AppErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
-    
-    // Log to localStorage for debugging
-    try {
-      const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
-      errors.push({
-        message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
-      });
-      localStorage.setItem('app_errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
-    } catch (e) {
-      console.error('Error logging to localStorage:', e);
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return <ErrorFallback error={this.state.error!} />;
-    }
-
-    return this.props.children;
-  }
-}
-
-// Export the wrapped component
 export default function AppWithErrorBoundary() {
   return (
-    <AppErrorBoundary>
+    <ErrorBoundary context="App">
       <App />
-    </AppErrorBoundary>
+    </ErrorBoundary>
   );
 }

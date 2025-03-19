@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { getUserById, getUserByEmail, isUsingMockData } from "./database";
+import { logError } from "./errorLogging";
 
 // Define types
 interface UserDetails {
@@ -102,20 +104,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(data.session.user);
           }
           
-          // Get user details
+          // Get user details using our database service
           try {
-            const { data: userData, error: userError } = await supabase
-              .from("users")
-              .select("*")
-              .eq("id", data.session.user.id)
-              .single();
+            const userData = await getUserById(data.session.user.id);
               
-            if (userError) {
-              console.error("Error fetching user details:", userError);
+            if (!userData) {
+              console.error("User details not found");
               if (isMounted) {
-                setAuthError(userError);
+                setAuthError(new Error("User details not found"));
               }
-            } else if (userData && isMounted) {
+            } else if (isMounted) {
               setUserDetails(userData);
             }
           } catch (detailsError) {
@@ -151,16 +149,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (session?.user) {
             try {
-              const { data, error } = await supabase
-                .from("users")
-                .select("*")
-                .eq("id", session.user.id)
-                .single();
+              const userData = await getUserById(session.user.id);
                 
-              if (error) {
-                console.error("Error fetching user details on auth change:", error);
-              } else if (data && isMounted) {
-                setUserDetails(data);
+              if (!userData) {
+                console.error("User details not found on auth change");
+              } else if (isMounted) {
+                setUserDetails(userData);
               }
             } catch (error) {
               console.error("Exception fetching user details on auth change:", error);
@@ -187,7 +181,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       // For demo purposes, allow login with demo accounts
       if (email === "martha@example.com" && password === "password123") {
         const demoUser = {
-          id: "demo-martha",
+          id: "00000000-0000-0000-0000-000000000011",
           email: "martha@example.com",
           full_name: "Martha Johnson",
           role: "customer",
@@ -207,11 +201,11 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (email === "helper@example.com" && password === "password123") {
         const demoUser = {
-          id: "demo-helper",
+          id: "00000000-0000-0000-0000-000000000012",
           email: "helper@example.com",
-          full_name: "Henry Helper",
+          full_name: "Helper User",
           role: "helper",
-          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Henry",
+          avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Helper",
           phone: "(555) 987-6543",
           address: "456 Oak St, Anytown, USA",
         };
@@ -227,7 +221,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (email === "admin@example.com" && password === "password123") {
         const demoUser = {
-          id: "demo-admin",
+          id: "00000000-0000-0000-0000-000000000013",
           email: "admin@example.com",
           full_name: "Admin User",
           role: "admin",
@@ -243,6 +237,28 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserDetails(demoUser);
         
         return { error: null, data: { user: demoUser } };
+      }
+
+      // If using mock data, handle auth locally
+      if (isUsingMockData()) {
+        // Check if the user exists in our mock data
+        const mockUser = await getUserByEmail(email);
+        
+        if (mockUser && password === "password123") {
+          localStorage.setItem("senior_assist_auth_method", "local");
+          localStorage.setItem("senior_assist_user", JSON.stringify(mockUser));
+          
+          setUser(mockUser);
+          setUserDetails(mockUser);
+          
+          return { error: null, data: { user: mockUser } };
+        } else {
+          return { 
+            error: { 
+              message: "Invalid login credentials" 
+            } 
+          };
+        }
       }
 
       // Sign in with Supabase for non-demo accounts
@@ -261,16 +277,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       // Get user details
       if (data.user) {
         try {
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
+          const userData = await getUserById(data.user.id);
             
-          if (userError) {
-            console.error("Error fetching user details after sign in:", userError);
-            setAuthError(userError);
-          } else if (userData) {
+          if (!userData) {
+            console.error("Error fetching user details after sign in: User not found");
+            setAuthError(new Error("User details not found"));
+          } else {
             setUserDetails(userData);
           }
         } catch (error) {

@@ -1,167 +1,232 @@
-// Voice guidance system for accessibility
+// Voice guidance utility for accessibility
 
-// Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
+// Store voice settings in localStorage
+const STORAGE_KEY = 'voice_guidance_settings';
 
-// Initialize speech synthesis
-let speechSynthesis: SpeechSynthesis | null = null;
-let availableVoices: SpeechSynthesisVoice[] = [];
-
-if (isBrowser && 'speechSynthesis' in window) {
-  speechSynthesis = window.speechSynthesis;
-}
-
-// Current voice settings
-const currentSettings = {
+// Default settings
+const DEFAULT_SETTINGS = {
   enabled: false,
   volume: 1,
   rate: 1,
   pitch: 1,
-  voice: null as SpeechSynthesisVoice | null,
-  autoReadPageContent: false,
+  voice: null
 };
 
-/**
- * Initialize the voice guidance system
- */
-export function initVoiceGuidance() {
-  if (!isBrowser || !speechSynthesis) {
-    console.warn('Speech synthesis not supported in this browser');
-    return false;
-  }
-  
-  // Load available voices
-  const loadVoices = () => {
-    availableVoices = speechSynthesis.getVoices();
-    console.log('Available voices loaded:', availableVoices.length);
-  };
+// Current utterance being spoken
+let currentUtterance: SpeechSynthesisUtterance | null = null;
 
-  // Chrome loads voices asynchronously
-  if (speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = loadVoices;
+// Queue for managing speech
+const speechQueue: { text: string; priority: boolean }[] = [];
+let isSpeaking = false;
+
+/**
+ * Get the current voice guidance status
+ */
+export function getVoiceGuidanceStatus() {
+  try {
+    const savedSettings = localStorage.getItem(STORAGE_KEY);
+    if (savedSettings) {
+      const parsedSettings = JSON.parse(savedSettings);
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsedSettings,
+        // Voice object can't be serialized properly, so we need to find it again
+        voice: parsedSettings.voiceURI ? 
+          findVoiceByURI(parsedSettings.voiceURI) : 
+          null
+      };
+    }
+  } catch (error) {
+    console.error('Failed to get voice guidance settings:', error);
   }
   
-  loadVoices();
-  return true;
+  return DEFAULT_SETTINGS;
 }
 
 /**
  * Update voice settings
  */
-export function updateVoiceSettings(settings: Partial<typeof currentSettings>) {
-  Object.assign(currentSettings, settings);
-  return currentSettings;
-}
-
-/**
- * Get available voices
- */
-export function getAvailableVoices() {
-  return availableVoices;
-}
-
-/**
- * Speak text using the speech synthesis API
- */
-export function speak(text: string, priority = false) {
-  if (!isBrowser || !speechSynthesis || !currentSettings.enabled) return false;
-  
-  // Cancel current speech if this is a priority message
-  if (priority && speechSynthesis.speaking) {
-    speechSynthesis.cancel();
-  } else if (speechSynthesis.speaking && !priority) {
-    // Don't interrupt current speech with non-priority messages
-    return false;
-  }
-  
+export function updateVoiceSettings(settings: {
+  enabled?: boolean;
+  volume?: number;
+  rate?: number;
+  pitch?: number;
+  voice?: SpeechSynthesisVoice | null;
+}) {
   try {
-    const utterance = new SpeechSynthesisUtterance(text);
+    const currentSettings = getVoiceGuidanceStatus();
+    const newSettings = {
+      ...currentSettings,
+      ...settings
+    };
     
-    // Apply settings
-    utterance.volume = currentSettings.volume;
-    utterance.rate = currentSettings.rate;
-    utterance.pitch = currentSettings.pitch;
+    // Store voice URI instead of the voice object
+    const settingsToStore = {
+      ...newSettings,
+      voiceURI: newSettings.voice?.voiceURI || null,
+      voice: null // Don't store the voice object
+    };
     
-    if (currentSettings.voice) {
-      utterance.voice = currentSettings.voice;
-    }
-    
-    speechSynthesis.speak(utterance);
-    return true;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsToStore));
+    return newSettings;
   } catch (error) {
-    console.error('Error speaking text:', error);
-    return false;
+    console.error('Failed to update voice settings:', error);
+    return getVoiceGuidanceStatus();
   }
-}
-
-/**
- * Stop speaking
- */
-export function stopSpeaking() {
-  if (!isBrowser || !speechSynthesis) return;
-  speechSynthesis.cancel();
-}
-
-/**
- * Announce page change
- */
-export function announcePageChange(pageName: string) {
-  speak(`Navigated to ${pageName} page`, true);
-}
-
-/**
- * Check if voice guidance is enabled
- */
-export function isVoiceGuidanceEnabled() {
-  return currentSettings.enabled;
 }
 
 /**
  * Toggle voice guidance on/off
  */
 export function toggleVoiceGuidance() {
-  currentSettings.enabled = !currentSettings.enabled;
-  if (currentSettings.enabled) {
-    speak('Voice guidance enabled', true);
-  }
-  return currentSettings.enabled;
-}
-
-/**
- * Get the current voice guidance status
- */
-export function getVoiceGuidanceStatus() {
-  return {
-    enabled: currentSettings.enabled,
-    volume: currentSettings.volume,
-    rate: currentSettings.rate,
-    pitch: currentSettings.pitch,
-    voice: currentSettings.voice,
-    autoReadPageContent: currentSettings.autoReadPageContent
-  };
-}
-
-/**
- * Set voice by name
- */
-export function setVoiceByName(name: string) {
-  const voice = availableVoices.find(v => v.name === name);
-  if (voice) {
-    currentSettings.voice = voice;
-    return true;
-  }
-  return false;
-}
-
-/**
- * Read element content
- */
-export function readElement(element: HTMLElement) {
-  if (!element) return false;
+  const currentSettings = getVoiceGuidanceStatus();
+  const newEnabled = !currentSettings.enabled;
   
-  const text = element.textContent || '';
-  if (text.trim()) {
-    return speak(text);
+  updateVoiceSettings({ enabled: newEnabled });
+  
+  // Announce the change if enabling
+  if (newEnabled) {
+    speak('Voice guidance enabled', true);
+  } else {
+    stopSpeaking();
   }
-  return false;
+  
+  return newEnabled;
+}
+
+/**
+ * Get available voices
+ */
+export function getAvailableVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return [];
+  }
+  
+  return window.speechSynthesis.getVoices();
+}
+
+/**
+ * Find a voice by its URI
+ */
+function findVoiceByURI(uri: string): SpeechSynthesisVoice | null {
+  const voices = getAvailableVoices();
+  return voices.find(voice => voice.voiceURI === uri) || null;
+}
+
+/**
+ * Process the speech queue
+ */
+function processSpeechQueue() {
+  if (isSpeaking || speechQueue.length === 0) {
+    return;
+  }
+  
+  const settings = getVoiceGuidanceStatus();
+  if (!settings.enabled) {
+    speechQueue.length = 0; // Clear the queue if voice guidance is disabled
+    return;
+  }
+  
+  const nextSpeech = speechQueue.shift();
+  if (!nextSpeech) return;
+  
+  isSpeaking = true;
+  
+  const utterance = new SpeechSynthesisUtterance(nextSpeech.text);
+  utterance.volume = settings.volume;
+  utterance.rate = settings.rate;
+  utterance.pitch = settings.pitch;
+  
+  if (settings.voice) {
+    utterance.voice = settings.voice;
+  }
+  
+  utterance.onend = () => {
+    isSpeaking = false;
+    currentUtterance = null;
+    processSpeechQueue(); // Process the next item in the queue
+  };
+  
+  utterance.onerror = (event) => {
+    console.error('Speech synthesis error:', event);
+    isSpeaking = false;
+    currentUtterance = null;
+    processSpeechQueue(); // Try the next item
+  };
+  
+  currentUtterance = utterance;
+  window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Speak text
+ */
+export function speak(text: string, priority = false): boolean {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return false;
+  }
+  
+  const settings = getVoiceGuidanceStatus();
+  if (!settings.enabled) {
+    return false;
+  }
+  
+  // If priority, clear the queue and stop current speech
+  if (priority) {
+    stopSpeaking();
+    speechQueue.length = 0;
+  }
+  
+  // Add to queue
+  if (priority) {
+    speechQueue.unshift({ text, priority });
+  } else {
+    speechQueue.push({ text, priority });
+  }
+  
+  processSpeechQueue();
+  return true;
+}
+
+/**
+ * Stop speaking
+ */
+export function stopSpeaking() {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return;
+  }
+  
+  window.speechSynthesis.cancel();
+  isSpeaking = false;
+  currentUtterance = null;
+}
+
+/**
+ * Announce page change
+ */
+export function announcePageChange(pageName: string) {
+  speak(`Page changed to ${pageName}`, true);
+}
+
+/**
+ * Announce action
+ */
+export function announceAction(action: string) {
+  speak(action, false);
+}
+
+/**
+ * Announce notification
+ */
+export function announceNotification(title: string, description?: string) {
+  const text = description ? `${title}. ${description}` : title;
+  speak(`New notification: ${text}`, true);
+}
+
+/**
+ * Read form field
+ */
+export function readFormField(label: string, value?: string) {
+  const text = value ? `${label}: ${value}` : label;
+  speak(text, false);
 }
