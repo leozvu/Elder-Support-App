@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -9,63 +9,66 @@
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-
+ 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-
+ 
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
-
+ 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-
+ 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
+ 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-
+ 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-
+ 
     --radius: 0.5rem;
+    
+    /* Accessibility variables */
+    --font-size-multiplier: 1;
   }
-
+ 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
+ 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
+ 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
+ 
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-
+ 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
+ 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
+ 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
+ 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
+ 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
@@ -73,62 +76,122 @@
   body {
     @apply bg-background text-foreground;
   }
+}
 
-  /* Accessibility styles */
-  .high-contrast {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 90%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 80%;
-    --muted-foreground: 0 0% 0%;
-    --accent: 0 0% 90%;
-    --accent-foreground: 0 0% 0%;
-    --border: 0 0% 0%;
-    color-contrast: increased;
-  }
+/* Accessibility styles */
 
-  .large-text {
-    font-size: 120%;
-  }
+/* High contrast mode */
+.high-contrast {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 100%;
+  --border: 0 0% 100%;
+  --input: 0 0% 0%;
+  
+  --primary: 0 0% 100%;
+  --primary-foreground: 0 0% 0%;
+  
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
+  
+  --accent: 0 0% 25%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --card: 0 0% 0%;
+  --card-foreground: 0 0% 100%;
+  
+  --popover: 0 0% 0%;
+  --popover-foreground: 0 0% 100%;
+}
 
-  .large-text button,
-  .large-text a {
-    font-size: 120%;
-  }
+.high-contrast button,
+.high-contrast a,
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+  border: 2px solid white !important;
+  outline: 2px solid white !important;
+}
 
-  .large-text h1 {
-    font-size: 2.5rem;
-  }
+.high-contrast button:focus,
+.high-contrast a:focus,
+.high-contrast input:focus,
+.high-contrast select:focus,
+.high-contrast textarea:focus {
+  outline: 3px solid yellow !important;
+  outline-offset: 2px !important;
+}
 
-  .large-text h2 {
-    font-size: 2rem;
-  }
+/* Large text mode */
+.large-text {
+  font-size: calc(1rem * var(--font-size-multiplier));
+}
 
-  .large-text h3 {
-    font-size: 1.75rem;
-  }
+.large-text h1 {
+  font-size: calc(2.25rem * var(--font-size-multiplier));
+}
 
-  .large-text p,
-  .large-text span,
-  .large-text div {
-    font-size: 1.2rem;
-    line-height: 1.6;
-  }
+.large-text h2 {
+  font-size: calc(1.875rem * var(--font-size-multiplier));
+}
 
-  .simplified-nav .complex-ui {
-    display: none;
-  }
+.large-text h3 {
+  font-size: calc(1.5rem * var(--font-size-multiplier));
+}
 
-  .simplified-nav .simplified-ui {
-    display: block;
-  }
+.large-text h4 {
+  font-size: calc(1.25rem * var(--font-size-multiplier));
+}
 
-  .simplified-nav button,
-  .simplified-nav a {
-    padding: 0.75rem 1.5rem;
-    margin: 0.5rem 0;
-  }
+.large-text p, 
+.large-text span, 
+.large-text div, 
+.large-text li {
+  font-size: calc(1rem * var(--font-size-multiplier));
+}
+
+.large-text button,
+.large-text a,
+.large-text input,
+.large-text select,
+.large-text textarea {
+  font-size: calc(1rem * var(--font-size-multiplier));
+  padding: calc(0.5rem * var(--font-size-multiplier)) calc(0.75rem * var(--font-size-multiplier));
+}
+
+/* Simplified navigation mode */
+.simplified-nav button,
+.simplified-nav a,
+.simplified-nav input,
+.simplified-nav select,
+.simplified-nav textarea {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.simplified-nav button:focus,
+.simplified-nav a:focus,
+.simplified-nav input:focus,
+.simplified-nav select:focus,
+.simplified-nav textarea:focus {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

@@ -1,38 +1,18 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
-} from "react";
-import { updateVoiceSettings } from "@/lib/voice-guidance";
-
-interface VoiceGuidanceSettings {
-  enabled: boolean;
-  volume: number;
-  rate: number;
-  pitch: number;
-  voice: any;
-  autoReadPageContent: boolean;
-}
-
-export interface AccessibilitySettings {
-  highContrast: boolean;
-  largeText: boolean;
-  largePointer: boolean;
-  simplifiedNavigation: boolean;
-  voiceGuidance: VoiceGuidanceSettings;
-}
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AccessibilitySettings } from './AccessibilityControls';
 
 interface AccessibilityContextType {
   settings: AccessibilitySettings;
-  updateSettings: (newSettings: AccessibilitySettings) => void;
+  updateSettings: (newSettings: Partial<AccessibilitySettings>) => void;
+  toggleHighContrast: () => void;
+  toggleLargeText: () => void;
+  toggleSimplifiedNavigation: () => void;
+  toggleVoiceGuidance: () => void;
 }
 
-export const defaultSettings: AccessibilitySettings = {
+const defaultSettings: AccessibilitySettings = {
   highContrast: false,
   largeText: false,
-  largePointer: false,
   simplifiedNavigation: false,
   voiceGuidance: {
     enabled: false,
@@ -41,80 +21,98 @@ export const defaultSettings: AccessibilitySettings = {
     pitch: 1,
     voice: null,
     autoReadPageContent: false,
-  },
+  }
 };
 
-// Create the context with a default value
 const AccessibilityContext = createContext<AccessibilityContextType>({
   settings: defaultSettings,
   updateSettings: () => {},
+  toggleHighContrast: () => {},
+  toggleLargeText: () => {},
+  toggleSimplifiedNavigation: () => {},
+  toggleVoiceGuidance: () => {},
 });
 
-// Custom hook to use the accessibility context
-export const useAccessibility = () => useContext(AccessibilityContext);
+export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
 
-// Provider component - using function declaration for Fast Refresh compatibility
-function AccessibilityProvider({ children }: { children: ReactNode }) {
-  // Try to load settings from localStorage first
-  const loadInitialSettings = (): AccessibilitySettings => {
-    try {
-      const savedSettings = localStorage.getItem("accessibilitySettings");
-      if (savedSettings) {
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('accessibilitySettings');
+    if (savedSettings) {
+      try {
         const parsedSettings = JSON.parse(savedSettings);
-        console.log("Loaded settings from localStorage:", parsedSettings);
-
-        // Update voice settings if voice guidance is enabled
-        if (
-          parsedSettings.voiceGuidance &&
-          parsedSettings.voiceGuidance.enabled
-        ) {
-          updateVoiceSettings({
-            rate: parsedSettings.voiceGuidance.rate,
-            pitch: parsedSettings.voiceGuidance.pitch,
-          });
-        }
-
-        return parsedSettings;
+        setSettings(parsedSettings);
+        
+        // Apply settings to document
+        document.documentElement.classList.toggle('high-contrast', parsedSettings.highContrast);
+        document.documentElement.classList.toggle('large-text', parsedSettings.largeText);
+        document.documentElement.classList.toggle('simplified-nav', parsedSettings.simplifiedNavigation);
+      } catch (error) {
+        console.error('Failed to parse accessibility settings:', error);
       }
-    } catch (error) {
-      console.error("Failed to load accessibility settings:", error);
     }
-    return defaultSettings;
+  }, []);
+
+  const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
+    setSettings(prev => {
+      const updated = { 
+        ...prev, 
+        ...newSettings,
+        // Handle nested voiceGuidance object
+        voiceGuidance: {
+          ...prev.voiceGuidance,
+          ...(newSettings.voiceGuidance || {})
+        }
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('accessibilitySettings', JSON.stringify(updated));
+      
+      // Apply settings to document
+      document.documentElement.classList.toggle('high-contrast', updated.highContrast);
+      document.documentElement.classList.toggle('large-text', updated.largeText);
+      document.documentElement.classList.toggle('simplified-nav', updated.simplifiedNavigation);
+      
+      return updated;
+    });
   };
 
-  const [settings, setSettings] = useState<AccessibilitySettings>(
-    loadInitialSettings(),
-  );
+  const toggleHighContrast = () => {
+    updateSettings({ highContrast: !settings.highContrast });
+  };
 
-  const updateSettings = (newSettings: AccessibilitySettings) => {
-    setSettings(newSettings);
-    // Save to localStorage
-    try {
-      localStorage.setItem(
-        "accessibilitySettings",
-        JSON.stringify(newSettings),
-      );
+  const toggleLargeText = () => {
+    updateSettings({ largeText: !settings.largeText });
+  };
 
-      // Update voice settings if voice guidance is enabled
-      if (newSettings.voiceGuidance && newSettings.voiceGuidance.enabled) {
-        updateVoiceSettings({
-          rate: newSettings.voiceGuidance.rate,
-          pitch: newSettings.voiceGuidance.pitch,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to save accessibility settings:", error);
-    }
-    console.log("Settings updated:", newSettings);
+  const toggleSimplifiedNavigation = () => {
+    updateSettings({ simplifiedNavigation: !settings.simplifiedNavigation });
+  };
+
+  const toggleVoiceGuidance = () => {
+    updateSettings({ 
+      voiceGuidance: { 
+        ...settings.voiceGuidance, 
+        enabled: !settings.voiceGuidance.enabled 
+      } 
+    });
   };
 
   return (
-    <AccessibilityContext.Provider value={{ settings, updateSettings }}>
+    <AccessibilityContext.Provider 
+      value={{ 
+        settings, 
+        updateSettings, 
+        toggleHighContrast, 
+        toggleLargeText, 
+        toggleSimplifiedNavigation,
+        toggleVoiceGuidance
+      }}
+    >
       {children}
     </AccessibilityContext.Provider>
   );
-}
+};
 
-// Export the provider and context consistently
-export { AccessibilityProvider };
-export default AccessibilityContext;
+export const useAccessibility = () => useContext(AccessibilityContext);

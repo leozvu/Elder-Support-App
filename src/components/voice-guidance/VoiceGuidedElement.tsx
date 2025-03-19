@@ -1,144 +1,65 @@
-import React, { useRef, useEffect, useState } from "react";
-import { speak } from "@/lib/voice-guidance";
-import { getVoiceGuidanceStatus } from "@/lib/voice-guidance";
-import { Button } from "@/components/ui/button";
-import { Volume2 } from "lucide-react";
+import React, { useRef, useEffect } from 'react';
+import { useAccessibility } from '@/components/accessibility/AccessibilityContext';
+import { speak } from '@/lib/voice-guidance';
 
 interface VoiceGuidedElementProps {
-  description: string;
   children: React.ReactNode;
+  description: string;
   priority?: boolean;
-  onFocus?: boolean;
-  onHover?: boolean;
-  onClick?: boolean;
-  className?: string;
-  showSpeakButton?: boolean;
-  detailedDescription?: string;
-  role?: string;
-  enhancedA11y?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-const VoiceGuidedElement = ({
-  description,
+const VoiceGuidedElement: React.FC<VoiceGuidedElementProps> = ({
   children,
+  description,
   priority = false,
-  onFocus = true,
-  onHover = true,
-  onClick = false,
-  className = "",
-  showSpeakButton = false,
-  detailedDescription,
-  role,
-  enhancedA11y = false,
-}: VoiceGuidedElementProps) => {
+  onFocus,
+  onBlur
+}) => {
+  const { settings } = useAccessibility();
   const elementRef = useRef<HTMLDivElement>(null);
-  const { enabled } = getVoiceGuidanceStatus();
-  const [hasFocus, setHasFocus] = useState(false);
-  const [hasHover, setHasHover] = useState(false);
+  const isVoiceEnabled = settings.voiceGuidance.enabled;
 
-  // Generate a unique ID for this element
-  const uniqueId = useRef(
-    `voice-guided-${Math.random().toString(36).substring(2, 11)}`,
-  );
-
+  // Handle focus events
   useEffect(() => {
     const element = elementRef.current;
     if (!element) return;
 
     const handleFocus = () => {
-      setHasFocus(true);
-      if (enabled && onFocus) speak(description, priority);
+      if (isVoiceEnabled) {
+        speak(description, priority);
+      }
+      if (onFocus) onFocus();
     };
 
     const handleBlur = () => {
-      setHasFocus(false);
+      if (onBlur) onBlur();
     };
 
-    const handleMouseEnter = () => {
-      setHasHover(true);
-      if (enabled && onHover) speak(description, priority);
-    };
+    // Find all focusable elements within this component
+    const focusableElements = element.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
 
-    const handleMouseLeave = () => {
-      setHasHover(false);
-    };
-
-    const handleClick = () => {
-      if (enabled && onClick) speak(description, priority);
-    };
-
-    // Add event listeners
-    if (onFocus) {
-      element.addEventListener("focus", handleFocus, true);
-      element.addEventListener("blur", handleBlur, true);
-    }
-
-    if (onHover) {
-      element.addEventListener("mouseenter", handleMouseEnter);
-      element.addEventListener("mouseleave", handleMouseLeave);
-    }
-
-    if (onClick) {
-      element.addEventListener("click", handleClick);
-    }
+    // Add event listeners to each focusable element
+    focusableElements.forEach(el => {
+      el.addEventListener('focus', handleFocus);
+      el.addEventListener('blur', handleBlur);
+    });
 
     return () => {
-      // Remove event listeners
-      if (onFocus) {
-        element.removeEventListener("focus", handleFocus, true);
-        element.removeEventListener("blur", handleBlur, true);
-      }
-
-      if (onHover) {
-        element.removeEventListener("mouseenter", handleMouseEnter);
-        element.removeEventListener("mouseleave", handleMouseLeave);
-      }
-
-      if (onClick) {
-        element.removeEventListener("click", handleClick);
-      }
+      // Clean up event listeners
+      focusableElements.forEach(el => {
+        el.removeEventListener('focus', handleFocus);
+        el.removeEventListener('blur', handleBlur);
+      });
     };
-  }, [description, priority, onFocus, onHover, onClick, enabled]);
-
-  const handleSpeakButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering parent click events
-    speak(detailedDescription || description, true);
-  };
+  }, [description, isVoiceEnabled, priority, onFocus, onBlur]);
 
   return (
-    <div
-      ref={elementRef}
-      className={`${className} ${enhancedA11y && hasFocus ? "ring-2 ring-primary ring-offset-2" : ""} ${enhancedA11y && hasHover ? "outline outline-1 outline-primary/50" : ""}`}
-      aria-label={description}
-      role={role}
-      id={uniqueId.current}
-      tabIndex={enhancedA11y ? 0 : undefined}
-      aria-describedby={
-        detailedDescription ? `${uniqueId.current}-desc` : undefined
-      }
-    >
+    <div ref={elementRef} data-voice-description={description}>
       {children}
-
-      {/* Hidden detailed description for screen readers */}
-      {detailedDescription && (
-        <span id={`${uniqueId.current}-desc`} className="sr-only">
-          {detailedDescription}
-        </span>
-      )}
-
-      {/* Optional speak button */}
-      {showSpeakButton && enabled && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 absolute top-1 right-1 opacity-70 hover:opacity-100"
-          onClick={handleSpeakButtonClick}
-          aria-label="Read description aloud"
-        >
-          <Volume2 className="h-3 w-3" />
-        </Button>
-      )}
     </div>
   );
 };

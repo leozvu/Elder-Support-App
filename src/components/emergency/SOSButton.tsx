@@ -15,6 +15,10 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
+import { useAccessibility } from "@/components/accessibility/AccessibilityContext";
+import { speak } from "@/lib/voice-guidance";
+import { useAuth } from "@/lib/auth";
+import { db } from "@/lib/local-database";
 
 export interface EmergencyContact {
   id?: string;
@@ -28,50 +32,104 @@ interface SOSButtonProps {
   emergencyContacts?: EmergencyContact[];
   userLocation?: { latitude: number; longitude: number; address?: string };
   showLocationInfo?: boolean;
-  userRole?: "elderly" | "helper" | "caregiver" | "admin";
+  userRole?: "elderly" | "helper" | "caregiver" | "admin" | "customer";
 }
 
 const SOSButton = ({
   onActivate = (contacts) => console.log("SOS activated", contacts),
-  emergencyContacts = [
-    {
-      id: "1",
-      name: "John Smith",
-      phone: "(555) 123-4567",
-      relationship: "Son",
-    },
-    {
-      id: "2",
-      name: "Community Hub",
-      phone: "(555) 987-6543",
-      relationship: "Care Provider",
-    },
-    {
-      id: "3",
-      name: "Emergency Services",
-      phone: "911",
-      relationship: "Emergency",
-    },
-  ],
+  emergencyContacts,
   userLocation = {
     latitude: 40.7128,
     longitude: -74.006,
     address: "123 Main Street, Anytown, USA",
   },
   showLocationInfo = true,
-  userRole = "elderly",
+  userRole,
 }: SOSButtonProps) => {
-  // Only show SOS button for elderly users
-  if (userRole !== "elderly") {
-    return null;
-  }
-
+  const { user, userDetails } = useAuth();
+  const { settings } = useAccessibility();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isActivated, setIsActivated] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [alertProgress, setAlertProgress] = useState(0);
   const [contactsNotified, setContactsNotified] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Determine the actual user role
+  const actualUserRole = userRole || userDetails?.role || "customer";
+
+  // Only show SOS button for elderly/customer users
+  if (actualUserRole !== "elderly" && actualUserRole !== "customer") {
+    return null;
+  }
+
+  // Load emergency contacts
+  useEffect(() => {
+    const loadEmergencyContacts = async () => {
+      setLoading(true);
+      try {
+        if (emergencyContacts) {
+          setContacts(emergencyContacts);
+        } else {
+          // In a real app, this would fetch from the database
+          // For now, use mock data if not provided
+          const mockContacts: EmergencyContact[] = [
+            {
+              id: "1",
+              name: "John Smith",
+              phone: "(555) 123-4567",
+              relationship: "Son",
+            },
+            {
+              id: "2",
+              name: "Community Hub",
+              phone: "(555) 987-6543",
+              relationship: "Care Provider",
+            },
+            {
+              id: "3",
+              name: "Emergency Services",
+              phone: "911",
+              relationship: "Emergency",
+            },
+          ];
+          
+          // Try to get from database if user is logged in
+          if (user?.id) {
+            try {
+              const { data, error } = await db.from("emergency_contacts")
+                .select("*")
+                .eq("user_id", user.id);
+                
+              if (!error && data && data.length > 0) {
+                setContacts(data.map(contact => ({
+                  id: contact.id,
+                  name: contact.name,
+                  phone: contact.phone,
+                  relationship: contact.relationship
+                })));
+              } else {
+                setContacts(mockContacts);
+              }
+            } catch (err) {
+              console.error("Error loading emergency contacts:", err);
+              setContacts(mockContacts);
+            }
+          } else {
+            setContacts(mockContacts);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading emergency contacts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEmergencyContacts();
+  }, [user?.id, emergencyContacts]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -90,18 +148,33 @@ const SOSButton = ({
           const newProgress = prev + 20;
 
           // Simulate notifying contacts as progress increases
-          if (newProgress === 40 && emergencyContacts.length > 0) {
-            setContactsNotified([emergencyContacts[0].id || "0"]);
-          } else if (newProgress === 60 && emergencyContacts.length > 1) {
+          if (newProgress === 40 && contacts.length > 0) {
+            setContactsNotified([contacts[0].id || "0"]);
+            
+            // Announce with voice guidance if enabled
+            if (settings.voiceGuidance.enabled) {
+              speak(`Notifying ${contacts[0].name}`);
+            }
+          } else if (newProgress === 60 && contacts.length > 1) {
             setContactsNotified((prev) => [
               ...prev,
-              emergencyContacts[1].id || "1",
+              contacts[1].id || "1",
             ]);
-          } else if (newProgress === 80 && emergencyContacts.length > 2) {
+            
+            // Announce with voice guidance if enabled
+            if (settings.voiceGuidance.enabled) {
+              speak(`Notifying ${contacts[1].name}`);
+            }
+          } else if (newProgress === 80 && contacts.length > 2) {
             setContactsNotified((prev) => [
               ...prev,
-              emergencyContacts[2].id || "2",
+              contacts[2].id || "2",
             ]);
+            
+            // Announce with voice guidance if enabled
+            if (settings.voiceGuidance.enabled) {
+              speak(`Notifying ${contacts[2].name}`);
+            }
           }
 
           return newProgress;
@@ -117,28 +190,58 @@ const SOSButton = ({
         description: "All your emergency contacts have been notified.",
         variant: "default",
       });
+      
+      // Announce with voice guidance if enabled
+      if (settings.voiceGuidance.enabled) {
+        speak("Emergency alert sent successfully. All your contacts have been notified.");
+      }
 
       // Close dialog after a delay
       setTimeout(() => {
         setIsDialogOpen(false);
       }, 2000);
     }
-  }, [alertSent, alertProgress, emergencyContacts, toast]);
+  }, [alertSent, alertProgress, contacts, toast, settings.voiceGuidance.enabled]);
 
   const handleSOSClick = () => {
     setIsDialogOpen(true);
+    
+    // Announce with voice guidance if enabled
+    if (settings.voiceGuidance.enabled) {
+      speak("Emergency SOS button pressed. Confirm to send alert to your emergency contacts.");
+    }
   };
 
   const handleConfirm = () => {
     setIsActivated(true);
     setAlertSent(true);
-    onActivate(emergencyContacts);
+    onActivate(contacts);
+    
+    // Announce with voice guidance if enabled
+    if (settings.voiceGuidance.enabled) {
+      speak("Emergency alert confirmed. Sending notifications to your emergency contacts.");
+    }
 
     // In a real implementation, this would trigger emergency protocols
     // Keep the button activated for longer to show it's in emergency mode
     setTimeout(() => {
       setIsActivated(false);
     }, 10000); // Reset after 10 seconds
+    
+    // Log the emergency event
+    try {
+      if (user?.id) {
+        db.from("emergency_events").insert({
+          user_id: user.id,
+          timestamp: new Date().toISOString(),
+          location: `${userLocation.latitude},${userLocation.longitude}`,
+          address: userLocation.address,
+          status: "initiated"
+        });
+      }
+    } catch (error) {
+      console.error("Error logging emergency event:", error);
+    }
   };
 
   const isContactNotified = (contactId?: string) => {
@@ -189,19 +292,27 @@ const SOSButton = ({
                 <h3 className="font-medium text-lg mb-2">
                   Your emergency contacts:
                 </h3>
-                <ul className="space-y-3">
-                  {emergencyContacts.map((contact) => (
-                    <li key={contact.id} className="flex justify-between">
-                      <div>
-                        <span className="font-medium">{contact.name}</span>
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {contact.relationship}
-                        </Badge>
-                      </div>
-                      <span className="text-gray-600">{contact.phone}</span>
-                    </li>
-                  ))}
-                </ul>
+                {loading ? (
+                  <p>Loading contacts...</p>
+                ) : contacts.length > 0 ? (
+                  <ul className="space-y-3">
+                    {contacts.map((contact) => (
+                      <li key={contact.id} className="flex justify-between">
+                        <div>
+                          <span className="font-medium">{contact.name}</span>
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {contact.relationship}
+                          </Badge>
+                        </div>
+                        <span className="text-gray-600">{contact.phone}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-yellow-600">
+                    No emergency contacts found. Please add contacts in your settings.
+                  </p>
+                )}
               </div>
 
               {showLocationInfo && (
@@ -225,6 +336,7 @@ const SOSButton = ({
                 <AlertDialogAction
                   onClick={handleConfirm}
                   className="bg-red-600 hover:bg-red-700 text-lg py-6"
+                  disabled={contacts.length === 0}
                 >
                   Yes, Send Alert Now
                 </AlertDialogAction>
@@ -241,7 +353,7 @@ const SOSButton = ({
               </div>
 
               <div className="space-y-3">
-                {emergencyContacts.map((contact) => (
+                {contacts.map((contact) => (
                   <div
                     key={contact.id}
                     className={`flex items-center justify-between p-3 rounded-md ${isContactNotified(contact.id) ? "bg-green-50" : "bg-gray-50"}`}

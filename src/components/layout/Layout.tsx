@@ -21,10 +21,7 @@ import {
   AlertTriangle,
   MessageSquare,
 } from "lucide-react";
-import VoiceGuidanceSystem from "@/components/accessibility/VoiceGuidanceSystem";
-import AccessibilityControls, {
-  AccessibilitySettings,
-} from "@/components/accessibility/AccessibilityControls";
+import AccessibilityControls from "@/components/accessibility/AccessibilityControls";
 import HighContrastMode from "@/components/accessibility/HighContrastMode";
 import LargeTextMode from "@/components/accessibility/LargeTextMode";
 import SimplifiedNavigation from "@/components/accessibility/SimplifiedNavigation";
@@ -37,6 +34,7 @@ import ChatInterface from "@/components/communication/ChatInterface";
 import VoiceGuidanceSettings from "@/components/voice-guidance/VoiceGuidanceSettings";
 import VoiceGuidedElement from "@/components/voice-guidance/VoiceGuidedElement";
 import { speak, announcePageChange } from "@/lib/voice-guidance";
+import { useAuth } from "@/lib/auth";
 
 interface LayoutProps {
   children: ReactNode;
@@ -47,58 +45,33 @@ interface LayoutProps {
 
 const Layout = ({
   children,
-  userName = "Martha Johnson",
-  userAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
+  userName,
+  userAvatar,
   showFloatingMenu = true,
 }: LayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const accessibilityContext = useAccessibility();
+  const { settings } = useAccessibility();
   const { toast } = useToast();
   const location = useLocation();
   const [showEmergencyChat, setShowEmergencyChat] = useState(false);
   const emergencyChatButtonRef = useRef<HTMLButtonElement>(null);
-  const [accessibilitySettings, setAccessibilitySettings] =
-    useState<AccessibilitySettings>({
-      highContrast: false,
-      largeText: false,
-      simplifiedNavigation: false,
-      voiceGuidance: {
-        enabled: false,
-        volume: 1,
-        rate: 1,
-        pitch: 1,
-        voice: null,
-        autoReadPageContent: false,
-      },
-    });
+  const { user, userDetails } = useAuth();
 
-  // For backward compatibility
-  const voiceGuidanceEnabled = accessibilitySettings.voiceGuidance.enabled;
-
-  // Load settings from localStorage on component mount
-  useEffect(() => {
-    const savedSettings = localStorage.getItem("accessibilitySettings");
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        setAccessibilitySettings(parsedSettings);
-        // Update the context if available
-        if (accessibilityContext && accessibilityContext.updateSettings) {
-          accessibilityContext.updateSettings(parsedSettings);
-        }
-      } catch (error) {
-        console.error("Failed to parse accessibility settings:", error);
-      }
-    }
-  }, [accessibilityContext]);
+  // Use provided values or fall back to user details from auth
+  const displayName = userName || userDetails?.full_name || "Guest";
+  const avatarUrl =
+    userAvatar ||
+    userDetails?.avatar_url ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
+  const userRole = userDetails?.role || "customer";
 
   // Announce page changes for voice guidance
   useEffect(() => {
-    if (voiceGuidanceEnabled) {
+    if (settings.voiceGuidance.enabled) {
       const pageName = getPageNameFromPath(location.pathname);
       announcePageChange(pageName);
     }
-  }, [location.pathname, voiceGuidanceEnabled]);
+  }, [location.pathname, settings.voiceGuidance.enabled]);
 
   // Helper function to get a friendly page name from the path
   const getPageNameFromPath = (path: string): string => {
@@ -120,7 +93,7 @@ const Layout = ({
       icon: <Calendar className="h-5 w-5" />,
       path: "/request",
     },
-    { name: "Nearby Hubs", icon: <Map className="h-5 w-5" />, path: "/hubs" },
+    { name: "Nearby Hubs", icon: <Map className="h-5 w-5" />, path: "/hub-finder" },
     {
       name: "Medications",
       icon: <Pill className="h-5 w-5" />,
@@ -137,9 +110,10 @@ const Layout = ({
       path: "/community-events",
     },
     {
-      name: "Caregiver",
+      name: "Family Portal",
       icon: <Heart className="h-5 w-5" />,
-      path: "/caregiver",
+      path: "/family-portal",
+      roles: ["customer", "admin"],
     },
     { name: "Profile", icon: <User className="h-5 w-5" />, path: "/profile" },
     {
@@ -154,61 +128,13 @@ const Layout = ({
     },
   ];
 
+  // Filter navigation items based on user role
+  const filteredNavItems = navigationItems.filter(item => 
+    !item.roles || item.roles.includes(userRole)
+  );
+
   const handleMenuToggle = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const handleAccessibilitySettingsChange = (
-    settings: AccessibilitySettings,
-  ) => {
-    setAccessibilitySettings(settings);
-    // Save settings to localStorage
-    localStorage.setItem("accessibilitySettings", JSON.stringify(settings));
-    // Update the context if available
-    if (accessibilityContext && accessibilityContext.updateSettings) {
-      accessibilityContext.updateSettings(settings);
-    }
-
-    // Announce changes to the user
-    if (settings.voiceGuidance.enabled) {
-      speak("Accessibility settings updated");
-    }
-
-    // Show toast notification
-    toast({
-      title: "Accessibility Settings Updated",
-      description: "Your accessibility preferences have been saved.",
-    });
-  };
-
-  // Toggle high contrast mode
-  const toggleHighContrast = () => {
-    const newSettings = {
-      ...accessibilitySettings,
-      highContrast: !accessibilitySettings.highContrast,
-    };
-    handleAccessibilitySettingsChange(newSettings);
-
-    if (voiceGuidanceEnabled) {
-      speak(
-        `High contrast mode ${newSettings.highContrast ? "enabled" : "disabled"}`,
-      );
-    }
-  };
-
-  // Toggle large text mode
-  const toggleLargeText = () => {
-    const newSettings = {
-      ...accessibilitySettings,
-      largeText: !accessibilitySettings.largeText,
-    };
-    handleAccessibilitySettingsChange(newSettings);
-
-    if (voiceGuidanceEnabled) {
-      speak(
-        `Large text mode ${newSettings.largeText ? "enabled" : "disabled"}`,
-      );
-    }
   };
 
   return (
@@ -219,8 +145,8 @@ const Layout = ({
         id="screen-reader-announcements"
       ></div>
       <Header
-        userName={userName}
-        userAvatar={userAvatar}
+        userName={displayName}
+        userAvatar={avatarUrl}
         onMenuToggle={handleMenuToggle}
       />
 
@@ -231,9 +157,17 @@ const Layout = ({
           priority={true}
         >
           <Button
-            variant={accessibilitySettings.highContrast ? "default" : "outline"}
+            variant={settings.highContrast ? "default" : "outline"}
             size="icon"
-            onClick={toggleHighContrast}
+            onClick={() => {
+              const newValue = !settings.highContrast;
+              const { updateSettings } = useAccessibility();
+              updateSettings({ highContrast: newValue });
+              
+              if (settings.voiceGuidance.enabled) {
+                speak(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`);
+              }
+            }}
             aria-label="Toggle high contrast mode"
             title="Toggle high contrast mode"
           >
@@ -246,9 +180,17 @@ const Layout = ({
           priority={true}
         >
           <Button
-            variant={accessibilitySettings.largeText ? "default" : "outline"}
+            variant={settings.largeText ? "default" : "outline"}
             size="icon"
-            onClick={toggleLargeText}
+            onClick={() => {
+              const newValue = !settings.largeText;
+              const { updateSettings } = useAccessibility();
+              updateSettings({ largeText: newValue });
+              
+              if (settings.voiceGuidance.enabled) {
+                speak(`Large text mode ${newValue ? 'enabled' : 'disabled'}`);
+              }
+            }}
             aria-label="Toggle large text mode"
             title="Toggle large text mode"
           >
@@ -280,20 +222,22 @@ const Layout = ({
         {/* Desktop Sidebar */}
         <aside className="hidden md:block w-64 bg-white border-r border-gray-200 p-4">
           <nav className="space-y-2 mt-6" aria-label="Main Navigation">
-            {navigationItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <VoiceGuidedElement
                 key={item.name}
                 description={`${item.name} menu item`}
               >
                 <Link
                   to={item.path}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-primary transition-colors"
+                  className={`flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-primary transition-colors ${
+                    location.pathname === item.path ? "bg-primary/10 text-primary font-medium" : ""
+                  }`}
                   aria-current={
                     location.pathname === item.path ? "page" : undefined
                   }
                 >
                   {item.icon}
-                  <span className="text-lg">{item.name}</span>
+                  <span className={`${settings.largeText ? "text-xl" : "text-lg"}`}>{item.name}</span>
                 </Link>
               </VoiceGuidedElement>
             ))}
@@ -301,31 +245,30 @@ const Layout = ({
 
           {/* Accessibility Controls */}
           <div className="mt-8 border-t pt-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3 px-3">
+            <h3 className={`text-sm font-medium text-gray-500 mb-3 px-3 ${settings.largeText ? "text-base" : ""}`}>
               Accessibility
             </h3>
             <div className="px-3">
-              <AccessibilityControls
-                settings={accessibilitySettings}
-                onSettingsChange={handleAccessibilitySettingsChange}
-              />
+              <AccessibilityControls />
             </div>
           </div>
 
           {/* Emergency SOS Button */}
-          <div className="mt-8 border-t pt-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3 px-3">
-              Emergency
-            </h3>
-            <div className="flex justify-center">
-              <VoiceGuidedElement
-                description="Emergency SOS button"
-                priority={true}
-              >
-                <SOSButton />
-              </VoiceGuidedElement>
+          {userRole === "customer" && (
+            <div className="mt-8 border-t pt-4">
+              <h3 className={`text-sm font-medium text-gray-500 mb-3 px-3 ${settings.largeText ? "text-base" : ""}`}>
+                Emergency
+              </h3>
+              <div className="flex justify-center">
+                <VoiceGuidedElement
+                  description="Emergency SOS button"
+                  priority={true}
+                >
+                  <SOSButton userRole={userRole} />
+                </VoiceGuidedElement>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
 
         {/* Mobile Menu */}
@@ -335,21 +278,23 @@ const Layout = ({
               <h2 className="text-xl font-bold text-primary">Senior Assist</h2>
             </div>
             <nav className="p-4 space-y-2" aria-label="Mobile Navigation">
-              {navigationItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <VoiceGuidedElement
                   key={item.name}
                   description={`${item.name} menu item`}
                 >
                   <Link
                     to={item.path}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-primary transition-colors"
+                    className={`flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-primary transition-colors ${
+                      location.pathname === item.path ? "bg-primary/10 text-primary font-medium" : ""
+                    }`}
                     onClick={() => setIsMobileMenuOpen(false)}
                     aria-current={
                       location.pathname === item.path ? "page" : undefined
                     }
                   >
                     {item.icon}
-                    <span className="text-lg">{item.name}</span>
+                    <span className={`${settings.largeText ? "text-xl" : "text-lg"}`}>{item.name}</span>
                   </Link>
                 </VoiceGuidedElement>
               ))}
@@ -357,80 +302,67 @@ const Layout = ({
 
             {/* Mobile Accessibility Controls */}
             <div className="p-4 border-t">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">
+              <h3 className={`text-sm font-medium text-gray-500 mb-3 ${settings.largeText ? "text-base" : ""}`}>
                 Accessibility
               </h3>
-              <AccessibilityControls
-                settings={accessibilitySettings}
-                onSettingsChange={handleAccessibilitySettingsChange}
-              />
+              <AccessibilityControls />
             </div>
 
             {/* Mobile Emergency Button */}
-            <div className="p-4 border-t">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">
-                Emergency
-              </h3>
-              <div className="flex justify-center">
-                <VoiceGuidedElement
-                  description="Emergency SOS button"
-                  priority={true}
-                >
-                  <SOSButton />
-                </VoiceGuidedElement>
+            {userRole === "customer" && (
+              <div className="p-4 border-t">
+                <h3 className={`text-sm font-medium text-gray-500 mb-3 ${settings.largeText ? "text-base" : ""}`}>
+                  Emergency
+                </h3>
+                <div className="flex justify-center">
+                  <VoiceGuidedElement
+                    description="Emergency SOS button"
+                    priority={true}
+                  >
+                    <SOSButton userRole={userRole} />
+                  </VoiceGuidedElement>
+                </div>
               </div>
-            </div>
+            )}
           </SheetContent>
         </Sheet>
 
         {/* Main Content */}
         <main className="flex-1" role="main" tabIndex={-1}>
           {/* Floating SOS button on mobile */}
-          <div className="md:hidden fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-            <VoiceGuidedElement
-              description="Emergency SOS button"
-              priority={true}
-            >
-              <SOSButton />
-            </VoiceGuidedElement>
-
-            <VoiceGuidedElement
-              description="Emergency chat with hub"
-              priority={true}
-            >
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={() => setShowEmergencyChat(true)}
-                aria-label="Emergency chat with hub"
-                className="rounded-full h-12 w-12 flex items-center justify-center"
+          {userRole === "customer" && (
+            <div className="md:hidden fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+              <VoiceGuidedElement
+                description="Emergency SOS button"
+                priority={true}
               >
-                <MessageSquare className="h-6 w-6" />
-              </Button>
-            </VoiceGuidedElement>
-          </div>
+                <SOSButton userRole={userRole} />
+              </VoiceGuidedElement>
+
+              <VoiceGuidedElement
+                description="Emergency chat with hub"
+                priority={true}
+              >
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => setShowEmergencyChat(true)}
+                  aria-label="Emergency chat with hub"
+                  className="rounded-full h-12 w-12 flex items-center justify-center"
+                >
+                  <MessageSquare className="h-6 w-6" />
+                </Button>
+              </VoiceGuidedElement>
+            </div>
+          )}
 
           {/* Accessibility wrappers */}
-          <HighContrastMode enabled={accessibilitySettings.highContrast}>
-            <LargeTextMode enabled={accessibilitySettings.largeText}>
+          <HighContrastMode enabled={settings.highContrast}>
+            <LargeTextMode enabled={settings.largeText}>
               <SimplifiedNavigation
-                enabled={accessibilitySettings.simplifiedNavigation}
+                enabled={settings.simplifiedNavigation}
               >
-                {voiceGuidanceEnabled ? (
-                  <VoiceGuidanceSystem
-                    enabled={true}
-                    volume={accessibilitySettings.voiceGuidance.volume}
-                    rate={accessibilitySettings.voiceGuidance.rate}
-                    pitch={accessibilitySettings.voiceGuidance.pitch}
-                    autoReadPageContent={
-                      accessibilitySettings.voiceGuidance.autoReadPageContent
-                    }
-                  >
-                    {children}
-                  </VoiceGuidanceSystem>
-                ) : (
-                  children
-                )}
+                {children}
               </SimplifiedNavigation>
             </LargeTextMode>
           </HighContrastMode>

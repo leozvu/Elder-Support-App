@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -18,7 +18,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Volume2, Sun, Moon, Type, Maximize2, Settings } from "lucide-react";
-import VoiceGuidanceSystem, { VoiceSettings } from "./VoiceGuidanceSystem";
+import { useAccessibility } from "./AccessibilityContext";
+import { speak } from "@/lib/voice-guidance";
+import VoiceGuidanceSettings from "@/components/voice-guidance/VoiceGuidanceSettings";
 
 export interface AccessibilitySettings {
   highContrast: boolean;
@@ -27,97 +29,53 @@ export interface AccessibilitySettings {
   voiceGuidance: VoiceSettings;
 }
 
+export interface VoiceSettings {
+  enabled: boolean;
+  volume: number;
+  rate: number;
+  pitch: number;
+  voice: SpeechSynthesisVoice | null;
+  autoReadPageContent: boolean;
+}
+
 interface AccessibilityControlsProps {
-  settings?: Partial<AccessibilitySettings>;
-  onSettingsChange?: (settings: AccessibilitySettings) => void;
+  className?: string;
 }
 
 const AccessibilityControls = ({
-  settings = {},
-  onSettingsChange = () => {},
+  className = "",
 }: AccessibilityControlsProps) => {
-  const [highContrast, setHighContrast] = useState(
-    settings.highContrast || false,
-  );
-  const [largeText, setLargeText] = useState(settings.largeText || false);
-  const [simplifiedNavigation, setSimplifiedNavigation] = useState(
-    settings.simplifiedNavigation || false,
-  );
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    enabled: false,
-    volume: 1,
-    rate: 1,
-    pitch: 1,
-    voice: null,
-    autoReadPageContent: false,
-    ...(settings.voiceGuidance || {}),
-  });
+  const { settings, updateSettings, toggleHighContrast, toggleLargeText } = useAccessibility();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleVoiceSettingsChange = (newVoiceSettings: VoiceSettings) => {
-    setVoiceSettings(newVoiceSettings);
     updateSettings({
       voiceGuidance: newVoiceSettings,
     });
   };
 
-  const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
-    const updatedSettings: AccessibilitySettings = {
-      highContrast,
-      largeText,
-      simplifiedNavigation,
-      voiceGuidance: voiceSettings,
-      ...newSettings,
-    };
-
-    onSettingsChange(updatedSettings);
-
-    // Apply settings to document
-    document.documentElement.classList.toggle(
-      "high-contrast",
-      updatedSettings.highContrast,
-    );
-    document.documentElement.classList.toggle(
-      "large-text",
-      updatedSettings.largeText,
-    );
-    document.documentElement.classList.toggle(
-      "simplified-nav",
-      updatedSettings.simplifiedNavigation,
-    );
-  };
-
-  const toggleHighContrast = () => {
-    const newValue = !highContrast;
-    setHighContrast(newValue);
-    updateSettings({ highContrast: newValue });
-  };
-
-  const toggleLargeText = () => {
-    const newValue = !largeText;
-    setLargeText(newValue);
-    updateSettings({ largeText: newValue });
-  };
-
   const toggleSimplifiedNavigation = () => {
-    const newValue = !simplifiedNavigation;
-    setSimplifiedNavigation(newValue);
+    const newValue = !settings.simplifiedNavigation;
     updateSettings({ simplifiedNavigation: newValue });
+    
+    if (settings.voiceGuidance.enabled) {
+      speak(`Simplified navigation ${newValue ? 'enabled' : 'disabled'}`);
+    }
   };
 
   return (
-    <div className="bg-white rounded-lg p-2">
+    <div className={`bg-white rounded-lg p-2 ${className}`}>
       <div className="flex items-center gap-2">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={highContrast ? "default" : "outline"}
+                variant={settings.highContrast ? "default" : "outline"}
                 size="icon"
                 onClick={toggleHighContrast}
                 aria-label="Toggle high contrast mode"
               >
-                {highContrast ? (
+                {settings.highContrast ? (
                   <Sun className="h-5 w-5" />
                 ) : (
                   <Moon className="h-5 w-5" />
@@ -126,7 +84,7 @@ const AccessibilityControls = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>
-                {highContrast
+                {settings.highContrast
                   ? "Disable high contrast"
                   : "Enable high contrast"}
               </p>
@@ -138,7 +96,7 @@ const AccessibilityControls = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={largeText ? "default" : "outline"}
+                variant={settings.largeText ? "default" : "outline"}
                 size="icon"
                 onClick={toggleLargeText}
                 aria-label="Toggle large text"
@@ -147,7 +105,7 @@ const AccessibilityControls = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{largeText ? "Disable large text" : "Enable large text"}</p>
+              <p>{settings.largeText ? "Disable large text" : "Enable large text"}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -156,7 +114,7 @@ const AccessibilityControls = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={simplifiedNavigation ? "default" : "outline"}
+                variant={settings.simplifiedNavigation ? "default" : "outline"}
                 size="icon"
                 onClick={toggleSimplifiedNavigation}
                 aria-label="Toggle simplified navigation"
@@ -166,7 +124,7 @@ const AccessibilityControls = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>
-                {simplifiedNavigation
+                {settings.simplifiedNavigation
                   ? "Disable simplified navigation"
                   : "Enable simplified navigation"}
               </p>
@@ -174,14 +132,7 @@ const AccessibilityControls = ({
           </Tooltip>
         </TooltipProvider>
 
-        <VoiceGuidanceSystem
-          enabled={voiceSettings.enabled}
-          volume={voiceSettings.volume}
-          rate={voiceSettings.rate}
-          pitch={voiceSettings.pitch}
-          autoReadPageContent={voiceSettings.autoReadPageContent}
-          onSettingsChange={handleVoiceSettingsChange}
-        />
+        <VoiceGuidanceSettings />
 
         <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
           <DialogTrigger asChild>
@@ -208,9 +159,8 @@ const AccessibilityControls = ({
                 </Label>
                 <Switch
                   id="high-contrast"
-                  checked={highContrast}
+                  checked={settings.highContrast}
                   onCheckedChange={(checked) => {
-                    setHighContrast(checked);
                     updateSettings({ highContrast: checked });
                   }}
                 />
@@ -222,9 +172,8 @@ const AccessibilityControls = ({
                 </Label>
                 <Switch
                   id="large-text"
-                  checked={largeText}
+                  checked={settings.largeText}
                   onCheckedChange={(checked) => {
-                    setLargeText(checked);
                     updateSettings({ largeText: checked });
                   }}
                 />
@@ -236,29 +185,99 @@ const AccessibilityControls = ({
                 </Label>
                 <Switch
                   id="simplified-nav"
-                  checked={simplifiedNavigation}
+                  checked={settings.simplifiedNavigation}
                   onCheckedChange={(checked) => {
-                    setSimplifiedNavigation(checked);
                     updateSettings({ simplifiedNavigation: checked });
                   }}
                 />
               </div>
 
+              <div className="flex items-center justify-between">
+                <Label htmlFor="voice-guidance" className="flex-1">
+                  Voice Guidance
+                </Label>
+                <Switch
+                  id="voice-guidance"
+                  checked={settings.voiceGuidance.enabled}
+                  onCheckedChange={(checked) => {
+                    updateSettings({ 
+                      voiceGuidance: {
+                        ...settings.voiceGuidance,
+                        enabled: checked
+                      }
+                    });
+                    
+                    if (checked) {
+                      speak("Voice guidance enabled");
+                    }
+                  }}
+                />
+              </div>
+
+              {settings.voiceGuidance.enabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="voice-volume">Voice Volume</Label>
+                    <Slider
+                      id="voice-volume"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={[settings.voiceGuidance.volume]}
+                      onValueChange={(value) => {
+                        updateSettings({
+                          voiceGuidance: {
+                            ...settings.voiceGuidance,
+                            volume: value[0]
+                          }
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="voice-rate">Voice Speed</Label>
+                    <Slider
+                      id="voice-rate"
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                      value={[settings.voiceGuidance.rate]}
+                      onValueChange={(value) => {
+                        updateSettings({
+                          voiceGuidance: {
+                            ...settings.voiceGuidance,
+                            rate: value[0]
+                          }
+                        });
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="auto-read" className="flex-1">
+                      Auto-read Page Content
+                    </Label>
+                    <Switch
+                      id="auto-read"
+                      checked={settings.voiceGuidance.autoReadPageContent}
+                      onCheckedChange={(checked) => {
+                        updateSettings({
+                          voiceGuidance: {
+                            ...settings.voiceGuidance,
+                            autoReadPageContent: checked
+                          }
+                        });
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="pt-2">
                 <Button
                   onClick={() => {
                     // Reset to defaults
-                    setHighContrast(false);
-                    setLargeText(false);
-                    setSimplifiedNavigation(false);
-                    setVoiceSettings({
-                      enabled: false,
-                      volume: 1,
-                      rate: 1,
-                      pitch: 1,
-                      voice: null,
-                      autoReadPageContent: false,
-                    });
                     updateSettings({
                       highContrast: false,
                       largeText: false,
