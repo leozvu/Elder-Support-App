@@ -1,3 +1,4 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -8,9 +9,9 @@ function Home() {
         Senior Assist Platform
       </h1>
       <div className="space-y-4 w-full max-w-md">
-        <Link to="/" className="w-full block">
+        <Link to="/login" className="w-full block">
           <Button className="w-full text-xl py-6" size="lg">
-            Go to Dashboard
+            Login
           </Button>
         </Link>
       </div>
