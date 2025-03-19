@@ -1,61 +1,102 @@
-import { Suspense, lazy } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Home from "./components/home";
-import ElderlyDashboard from "./pages/ElderlyDashboard";
 import { useAuth } from "./lib/auth";
-import Diagnostics from "./pages/Diagnostics";
 
-// Lazy load pages for better performance
-const Login = lazy(() => import("./pages/Login"));
-const Register = lazy(() => import("./pages/Register"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Settings = lazy(() => import("./pages/Settings"));
+// Import components directly instead of using lazy loading for critical components
+import Home from "./components/home";
+import Login from "./pages/Login";
 
-// Loading component
-const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-100">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-      <p className="text-lg">Loading...</p>
+// Use lazy loading for non-critical components
+const ElderlyDashboard = React.lazy(() => import("./pages/ElderlyDashboard"));
+const HelperDashboard = React.lazy(() => import("./pages/HelperDashboard"));
+const AdminDashboard = React.lazy(() => import("./pages/HubDashboard"));
+const Profile = React.lazy(() => import("./pages/Profile"));
+const Settings = React.lazy(() => import("./pages/Settings"));
+const Register = React.lazy(() => import("./pages/Register"));
+
+// Loading component with timeout detection
+const LoadingScreen = ({ timeout = 10000 }) => {
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTimedOut(true);
+    }, timeout);
+    
+    return () => clearTimeout(timer);
+  }, [timeout]);
+  
+  if (isTimedOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Loading Timeout</h2>
+          <p className="text-gray-700 mb-4">
+            The application is taking longer than expected to load. This might be due to a slow connection or a temporary issue.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-lg">Loading...</p>
+      </div>
+    </div>
+  );
+};
+
+// Error fallback component
+const ErrorFallback = ({ error }: { error: Error }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+      <h2 className="text-xl font-bold text-red-600 mb-4">Something went wrong</h2>
+      <p className="text-gray-700 mb-4">
+        The application encountered an error. Please try refreshing the page.
+      </p>
+      <div className="bg-red-50 p-3 rounded-md mb-4 overflow-auto max-h-40">
+        <p className="text-red-700 font-mono text-sm">
+          {error.message}
+        </p>
+      </div>
+      <button 
+        onClick={() => window.location.reload()}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+      >
+        Refresh Page
+      </button>
     </div>
   </div>
 );
 
 function App() {
-  const { user, userDetails, isLoading } = useAuth();
+  const { user, userDetails, isLoading, authError } = useAuth();
+  const [hasError, setHasError] = useState<Error | null>(null);
 
-  // Check for Supabase configuration issues
-  const hasSupabaseConfigIssue = localStorage.getItem('supabaseConfigIssue') === 'true';
-  
-  // If there are configuration issues, show a warning
-  if (hasSupabaseConfigIssue) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md">
-          <h1 className="text-xl font-bold text-yellow-800 mb-4">Configuration Issue Detected</h1>
-          <p className="text-yellow-700 mb-4">
-            The application is missing required configuration for Supabase. Please check your environment variables.
-          </p>
-          <div className="flex justify-between">
-            <a 
-              href="/diagnostics" 
-              className="text-blue-600 hover:underline"
-            >
-              View Diagnostics
-            </a>
-            <button 
-              onClick={() => {
-                localStorage.removeItem('supabaseConfigIssue');
-                window.location.reload();
-              }}
-              className="text-blue-600 hover:underline"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      setHasError(authError);
+    }
+  }, [authError]);
+
+  // Error boundary
+  if (hasError) {
+    return <ErrorFallback error={hasError} />;
+  }
+
+  // Loading state
+  if (isLoading) {
+    return <LoadingScreen />;
   }
 
   // Function to determine which dashboard to show based on user role
@@ -64,42 +105,97 @@ function App() {
       return <Navigate to="/login" />;
     }
 
-    if (userDetails) {
-      switch (userDetails.role) {
-        case "customer":
-          return <ElderlyDashboard />;
-        case "helper":
-          return <div>Helper Dashboard</div>;
-        case "admin":
-          return <div>Admin Dashboard</div>;
-        default:
-          return <ElderlyDashboard />;
+    try {
+      if (userDetails) {
+        switch (userDetails.role) {
+          case "customer":
+            return <ElderlyDashboard />;
+          case "helper":
+            return <HelperDashboard />;
+          case "admin":
+            return <AdminDashboard />;
+          default:
+            return <ElderlyDashboard />;
+        }
       }
+      
+      // Default to elderly dashboard if role not determined yet
+      return <ElderlyDashboard />;
+    } catch (error) {
+      console.error("Error rendering dashboard:", error);
+      setHasError(error instanceof Error ? error : new Error(String(error)));
+      return <ErrorFallback error={error instanceof Error ? error : new Error(String(error))} />;
     }
-
-    // Default to elderly dashboard if role not determined yet
-    return <ElderlyDashboard />;
   };
-
-  // Loading state
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
 
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={getDashboardComponent()} />
         <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
-        <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" />} />
-        <Route path="/diagnostics" element={<Diagnostics />} />
+        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+        <Route 
+          path="/register" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              {user ? <Navigate to="/" /> : <Register />}
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              {user ? <Profile /> : <Navigate to="/login" />}
+            </Suspense>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              {user ? <Settings /> : <Navigate to="/login" />}
+            </Suspense>
+          } 
+        />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Suspense>
   );
 }
 
-export default App;
+// Wrap App with error boundary
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback error={this.state.error!} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+// Export the wrapped component
+export default function AppWithErrorBoundary() {
+  return (
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  );
+}

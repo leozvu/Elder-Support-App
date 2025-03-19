@@ -5,54 +5,123 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Elder Support App</title>
-    <!-- Add fallback script -->
-    <script>
-      // Set a timeout to redirect to fallback page if the app doesn't load
-      const appLoadTimeout = setTimeout(() => {
-        // Store the error in localStorage
-        localStorage.setItem('appError', 'Application failed to load within 15 seconds');
-        // Redirect to fallback page
-        window.location.href = '/fallback.html';
-      }, 15000);
-      
-      // The main app will clear this timeout when it loads
-      window.clearAppLoadTimeout = function() {
-        clearTimeout(appLoadTimeout);
-      };
-      
-      // Handle global errors
-      window.addEventListener('error', function(function(event) {
-        console.error('Global error:', event.error);
-        // Store the error in localStorage
-        localStorage.setItem('appError', event.error ? (event.error.stack || event.error.message) : 'Unknown error');
-        // Redirect to fallback page
-        window.location.href = '/fallback.html?error=' + encodeURIComponent(event.error ? (event.error.stack || event.error.message) : 'Unknown error');
-        // Prevent the default browser error handling
-        event.preventDefault();
-      });
-      
-      // Handle unhandled promise rejections
-      window.addEventListener('unhandledrejection', function(event) {
-        console.error('Unhandled promise rejection:', event.reason);
-        // Store the error in localStorage
-        localStorage.setItem('appError', event.reason ? (event.reason.stack || event.reason.message) : 'Unhandled promise rejection');
-        // Redirect to fallback page
-        window.location.href = '/fallback.html?error=' + encodeURIComponent(event.reason ? (event.reason.stack || event.reason.message) : 'Unhandled promise rejection');
-        // Prevent the default browser error handling
-        event.preventDefault();
-      });
-    </script>
+    <style>
+      /* Initial loading spinner */
+      .initial-loader {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        background-color: #f3f4f6;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 9999;
+      }
+      .spinner {
+        border: 4px solid #e5e7eb;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+      }
+      .loading-text {
+        margin-top: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }```
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
+    <!-- Initial loading indicator that shows before React loads -->
+    <div id="initial-loader" class="initial-loader">
+      <div class="text-center">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading Elder Support App...</p>
+      </div>
+    </div>
+    
     <div id="root"></div>
+    
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Clear the timeout when the app loads -->
+    
+    <!-- Script to hide the initial loader once React is loaded -->
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        if (window.clearAppLoadTimeout) {
-          window.clearAppLoadTimeout();
-        }
+      // Hide the initial loader when the app has loaded
+      window.addEventListener('load', function() {
+        // Give React a moment to initialize
+        setTimeout(function() {
+          const loader = document.getElementById('initial-loader');
+          if (loader) {
+            loader.style.opacity = '0';
+            loader.style.transition = 'opacity 0.5s ease';
+            setTimeout(function() {
+              loader.style.display = 'none';
+            }, 500);
+          }
+        }, 500);
       });
+      
+      // Set a timeout to show an error message if the app doesn't load
+      setTimeout(function() {
+        const root = document.getElementById('root');
+        const loader = document.getElementById('initial-loader');
+        
+        // If the root is empty after 20 seconds, show an error
+        if (root && !root.hasChildNodes() && loader) {
+          loader.innerHTML = `
+            <div style="max-width: 500px; text-align: center; padding: 20px;">
+              <h2 style="color: #ef4444; margin-bottom: 16px; font-family: sans-serif;">Loading Timeout</h2>
+              <p style="margin-bottom: 16px; font-family: sans-serif;">
+                The application is taking longer than expected to load. This might be due to a slow connection or a temporary issue.
+              </p>
+              <button 
+                onclick="window.location.reload()" 
+                style="background-color: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif;"
+              >
+                Refresh Page
+              </button>
+            </div>
+          `;
+        }
+      }, 20000);
     </script>
   </body>
 </html>
+```
+
+## 7. Let's create a minimal Home component:
+
+{% code path="src/components/home.tsx" type="update" %}
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+
+function Home() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+      <h1 className="text-4xl font-bold text-primary mb-8 text-center">
+        Senior Assist Platform
+      </h1>
+      <div className="space-y-4 w-full max-w-md">
+        <Link to="/login" className="w-full block">
+          <Button className="w-full py-6 text-xl" size="lg">
+            Login
+          </Button>
+        </Link>
+        <Link to="/register" className="w-full block">
+          <Button variant="outline" className="w-full py-6 text-xl" size="lg">
+            Register
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default Home;
