@@ -8,6 +8,8 @@ interface UserDetails {
   full_name: string;
   role: string;
   avatar_url?: string;
+  phone?: string;
+  address?: string;
 }
 
 interface AuthContextType {
@@ -66,7 +68,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             setAuthInitialized(true);
             clearTimeout(loadingTimeout);
           }
-          return;
+          return () => {
+            isMounted = false;
+            clearTimeout(loadingTimeout);
+          };
         } catch (e) {
           console.error("Error parsing local user:", e);
           if (isMounted) {
@@ -79,6 +84,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check Supabase auth
     const checkAuth = async () => {
       try {
+        // First try to get the session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -186,6 +192,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           full_name: "Martha Johnson",
           role: "customer",
           avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha",
+          phone: "(555) 123-4567",
+          address: "123 Main St, Anytown, USA",
         };
         
         localStorage.setItem("senior_assist_auth_method", "local");
@@ -204,6 +212,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           full_name: "Henry Helper",
           role: "helper",
           avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Henry",
+          phone: "(555) 987-6543",
+          address: "456 Oak St, Anytown, USA",
         };
         
         localStorage.setItem("senior_assist_auth_method", "local");
@@ -222,6 +232,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           full_name: "Admin User",
           role: "admin",
           avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
+          phone: "(555) 555-5555",
+          address: "789 Pine St, Anytown, USA",
         };
         
         localStorage.setItem("senior_assist_auth_method", "local");
@@ -297,6 +309,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error signing out:", error);
       setAuthError(error instanceof Error ? error : new Error(String(error)));
+      throw error; // Re-throw to allow handling in the component
     }
   };
 

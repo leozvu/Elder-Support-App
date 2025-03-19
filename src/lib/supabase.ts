@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { logError } from './errorLogging';
 
 // Initialize Supabase client with better error handling
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -7,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Log configuration issues
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase configuration is missing. Please check your environment variables.');
+  console.warn('Supabase configuration is missing. Using demo mode.');
   // Set a flag in localStorage to indicate configuration issues
   localStorage.setItem('supabaseConfigIssue', 'true');
 }
@@ -16,9 +15,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
   // Create an abort controller for timeout
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
   
   try {
+    // If we're in demo mode, simulate a successful response
+    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
+      clearTimeout(timeoutId);
+      return new Response(JSON.stringify({ data: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -28,8 +36,7 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
   } catch (error: any) {
     clearTimeout(timeoutId);
     
-    // Log the error with context
-    logError(error, 'Supabase Fetch');
+    console.error('Supabase fetch error:', error);
     
     // Determine if it's a timeout
     const isTimeout = error.name === 'AbortError';
@@ -59,15 +66,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Test the connection and log the result
+// Test the connection
 export const testSupabaseConnection = async () => {
   try {
+    // If we're in demo mode, return a simulated success
+    if (localStorage.getItem('supabaseConfigIssue') === 'true') {
+      return { success: true, demo: true };
+    }
+    
     const start = performance.now();
     const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
     const end = performance.now();
     
     if (error) {
-      logError(error, 'Supabase Connection Test');
       console.error('Supabase connection test failed:', error.message);
       return { success: false, message: error.message, latency: end - start };
     }
@@ -75,7 +86,6 @@ export const testSupabaseConnection = async () => {
     console.log(`Supabase connection successful! Latency: ${Math.round(end - start)}ms`);
     return { success: true, latency: end - start };
   } catch (error) {
-    logError(error, 'Supabase Connection Test');
     console.error('Exception during Supabase connection test:', error);
     return { success: false, message: String(error), latency: null };
   }

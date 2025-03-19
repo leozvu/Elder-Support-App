@@ -30,12 +30,16 @@
       .loading-text {
         margin-top: 20px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      }```
+      }
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
     </style>
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://api.dicebear.com">
   </head>
   <body>
     <!-- Initial loading indicator that shows before React loads -->
@@ -48,33 +52,44 @@
     
     <div id="root"></div>
     
-    <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Script to hide the initial loader once React is loaded -->
     <script>
-      // Hide the initial loader when the app has loaded
-      window.addEventListener('load', function() {
-        // Give React a moment to initialize
-        setTimeout(function() {
-          const loader = document.getElementById('initial-loader');
-          if (loader) {
-            loader.style.opacity = '0';
-            loader.style.transition = 'opacity 0.5s ease';
-            setTimeout(function() {
-              loader.style.display = 'none';
-            }, 500);
+      // Error handling for script loading
+      window.addEventListener('error', function(event) {
+        if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
+          console.error('Resource loading error:', event);
+          
+          // If the main script fails to load, show an error
+          const initialLoader = document.getElementById('initial-loader');
+          if (initialLoader) {
+            initialLoader.innerHTML = `
+              <div style="max-width: 500px; text-align: center; padding: 20px;">
+                <h2 style="color: #ef4444; margin-bottom: 16px; font-family: sans-serif;">Resource Loading Error</h2>
+                <p style="margin-bottom: 16px; font-family: sans-serif;">
+                  Failed to load required resources. This might be due to a network issue.
+                </p>
+                <p style="margin-bottom: 16px; font-family: sans-serif; font-size: 14px; color: #6b7280;">
+                  Error: ${event.target.src || event.target.href || 'Unknown resource'}
+                </p>
+                <button 
+                  onclick="window.location.reload()" 
+                  style="background-color: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: sans-serif;"
+                >
+                  Refresh Page
+                </button>
+              </div>
+            `;
           }
-        }, 500);
-      });
+        }
+      }, true);
       
       // Set a timeout to show an error message if the app doesn't load
-      setTimeout(function() {
+      const appLoadTimeout = setTimeout(function() {
         const root = document.getElementById('root');
-        const loader = document.getElementById('initial-loader');
+        const initialLoader = document.getElementById('initial-loader');
         
         // If the root is empty after 20 seconds, show an error
-        if (root && !root.hasChildNodes() && loader) {
-          loader.innerHTML = `
+        if (root && !root.hasChildNodes() && initialLoader) {
+          initialLoader.innerHTML = `
             <div style="max-width: 500px; text-align: center; padding: 20px;">
               <h2 style="color: #ef4444; margin-bottom: 16px; font-family: sans-serif;">Loading Timeout</h2>
               <p style="margin-bottom: 16px; font-family: sans-serif;">
@@ -86,42 +101,31 @@
               >
                 Refresh Page
               </button>
+              <div style="margin-top: 20px;">
+                <button 
+                  onclick="document.getElementById('error-details').style.display = 'block';" 
+                  style="background-color: transparent; color: #6b7280; border: none; text-decoration: underline; cursor: pointer; font-family: sans-serif; font-size: 14px;"
+                >
+                  Show Technical Details
+                </button>
+                <div id="error-details" style="display: none; margin-top: 16px; text-align: left; background-color: #f3f4f6; padding: 12px; border-radius: 4px; font-size: 12px; font-family: monospace; white-space: pre-wrap;">
+                  User Agent: ${navigator.userAgent}
+                  URL: ${window.location.href}
+                  Time: ${new Date().toISOString()}
+                  Errors: ${JSON.stringify(JSON.parse(localStorage.getItem('app_errors') || '[]'), null, 2)}
+                </div>
+              </div>
             </div>
           `;
         }
       }, 20000);
+      
+      // Clear the timeout when the app loads
+      window.addEventListener('load', function() {
+        clearTimeout(appLoadTimeout);
+      });
     </script>
+    
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-```
-
-## 7. Let's create a minimal Home component:
-
-{% code path="src/components/home.tsx" type="update" %}
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-
-function Home() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <h1 className="text-4xl font-bold text-primary mb-8 text-center">
-        Senior Assist Platform
-      </h1>
-      <div className="space-y-4 w-full max-w-md">
-        <Link to="/login" className="w-full block">
-          <Button className="w-full py-6 text-xl" size="lg">
-            Login
-          </Button>
-        </Link>
-        <Link to="/register" className="w-full block">
-          <Button variant="outline" className="w-full py-6 text-xl" size="lg">
-            Register
-          </Button>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-export default Home;

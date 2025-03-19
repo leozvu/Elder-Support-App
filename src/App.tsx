@@ -85,6 +85,7 @@ function App() {
   // Handle auth errors
   useEffect(() => {
     if (authError) {
+      console.error("Auth error in App:", authError);
       setHasError(authError);
     }
   }, [authError]);
@@ -180,6 +181,20 @@ class AppErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    
+    // Log to localStorage for debugging
+    try {
+      const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
+      errors.push({
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString(),
+      });
+      localStorage.setItem('app_errors', JSON.stringify(errors.slice(-10))); // Keep last 10 errors
+    } catch (e) {
+      console.error('Error logging to localStorage:', e);
+    }
   }
 
   render() {

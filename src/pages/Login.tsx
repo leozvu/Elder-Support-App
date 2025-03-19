@@ -1,18 +1,27 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn } = useAuth();
+  const { signIn, authError } = useAuth();
   const navigate = useNavigate();
+
+  // Handle auth errors from context
+  useEffect(() => {
+    if (authError) {
+      setError(authError.message);
+      setIsLoading(false);
+    }
+  }, [authError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +37,7 @@ const Login = () => {
         return;
       }
       
-      navigate("/");
+      // Navigate is handled by the auth system through the PublicRoute component
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
       setIsLoading(false);
@@ -64,7 +73,7 @@ const Login = () => {
         return;
       }
       
-      navigate("/");
+      // Navigate is handled by the auth system through the PublicRoute component
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
       setIsLoading(false);
@@ -79,8 +88,9 @@ const Login = () => {
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded mb-4">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded mb-4 flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <p>{error}</p>
             </div>
           )}
           
@@ -95,6 +105,7 @@ const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                autoComplete="email"
               />
             </div>
             <div className="space-y-2">
@@ -106,6 +117,7 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -140,6 +152,14 @@ const Login = () => {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-gray-500">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-primary hover:underline">
+              Sign up
+            </Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );

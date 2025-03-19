@@ -2,11 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle, Calendar, Clock, HeartPulse, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const ElderlyDashboard = () => {
   const { userDetails, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Simulate loading data
@@ -20,7 +23,7 @@ const ElderlyDashboard = () => {
   const handleLogout = async () => {
     try {
       await signOut();
-      window.location.href = "/login";
+      navigate("/login");
     } catch (error) {
       setError(error instanceof Error ? error : new Error(String(error)));
     }
@@ -32,7 +35,10 @@ const ElderlyDashboard = () => {
         <div className="max-w-4xl mx-auto">
           <Card className="mb-4">
             <CardHeader>
-              <CardTitle className="text-red-600">Error</CardTitle>
+              <CardTitle className="text-red-600 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Error
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="mb-4">An error occurred while loading the dashboard:</p>
@@ -63,33 +69,77 @@ const ElderlyDashboard = () => {
       <div className="max-w-4xl mx-auto">
         <Card className="mb-4">
           <CardHeader>
-            <CardTitle>Elderly Dashboard</CardTitle>
+            <CardTitle>Welcome, {userDetails?.full_name || "User"}!</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-2">Welcome, {userDetails?.full_name || "User"}!</p>
-            <p className="mb-4">Role: {userDetails?.role || "Unknown"}</p>
-            <Button onClick={handleLogout}>Logout</Button>
+            <p className="mb-4">How can we assist you today?</p>
+            <Button onClick={handleLogout} variant="outline" className="mt-2">Logout</Button>
           </CardContent>
         </Card>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Request Services</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Request Services
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="mb-4">Click here to request assistance with daily tasks.</p>
-              <Button>Request Service</Button>
+              <p className="mb-4">Need help with daily tasks? Request assistance from our helpers.</p>
+              <Button onClick={() => navigate("/request")}>Request Service</Button>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader>
-              <CardTitle>Medications</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                Upcoming Services
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="mb-4">Track your medication schedule and get reminders.</p>
-              <Button>View Medications</Button>
+              <p className="text-gray-500 italic">No upcoming services scheduled.</p>
+              <Button variant="outline" className="mt-4" onClick={() => navigate("/service-history")}>
+                View Service History
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <HeartPulse className="h-5 w-5 text-primary" />
+                Health & Wellness
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Track your medications and wellness activities.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => navigate("/medications")}>
+                  Medications
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/wellness")}>
+                  Wellness
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Nearby Support
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Find support hubs and community resources near you.</p>
+              <Button variant="outline" onClick={() => navigate("/hub-finder")}>
+                Find Support Hubs
+              </Button>
             </CardContent>
           </Card>
         </div>
