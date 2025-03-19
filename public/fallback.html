@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elder Support App - Fallback Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f3f4f6;
+      color: #1f2937;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #1f2937;
+    }
+    p {
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .card {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      padding: 1.5rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2563eb;
+      color: white;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-size: 1rem;
+    }
+    .button:hover {
+      background-color: #1d4ed8;
+    }
+    .error-box {
+      background-color: #fee2e2;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
+      overflow: auto;
+      max-height: 200px;
+    }
+    .error-message {
+      font-family: monospace;
+      color: #b91c1c;
+      margin: 0;
+      white-space: pre-wrap;
+    }
+    .diagnostic-info {
+      font-size: 0.875rem;
+      color: #6b7280;
+      text-align: left;
+      margin-top: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Elder Support App</h1>
+      <p>The application is currently unavailable. This could be due to a temporary issue or a problem with your connection.</p>
+      
+      <div id="errorDetails" class="error-box" style="display: none;">
+        <pre id="errorMessage" class="error-message"></pre>
+      </div>
+      
+      <button class="button" onclick="window.location.reload()">Refresh Page</button>
+      
+      <div class="diagnostic-info">
+        <p><strong>Browser:</strong> <span id="userAgent"></span></p>
+        <p><strong>Time:</strong> <span id="timestamp"></span></p>
+        <p><strong>URL:</strong> <span id="currentUrl"></span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Collect diagnostic information
+    document.getElementById('userAgent').textContent = navigator.userAgent;
+    document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    document.getElementById('currentUrl').textContent = window.location.href;
+    
+    // Check for error information in URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorMessage = urlParams.get('error') || localStorage.getItem('appError');
+    
+    if (errorMessage) {
+      document.getElementById('errorDetails').style.display = 'block';
+      document.getElementById('errorMessage').textContent = decodeURIComponent(errorMessage);
+    }
+    
+    // Function to check if the main app is working
+    function checkMainApp() {
+      fetch('/')
+        .then(response => {
+          if (response.ok) {
+            // If the main app is responding, redirect back after a delay
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 5000);
+          }
+        })
+        .catch(error => {
+          console.error('Error checking main app:', error);
+        });
+    }
+    
+    // Check the main app every 30 seconds
+    setInterval(checkMainApp, 30000);
+  </script>
+</body>
+</html>

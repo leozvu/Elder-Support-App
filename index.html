@@ -1,14 +1,58 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>Elder Support App</title>
+    <!-- Add fallback script -->
+    <script>
+      // Set a timeout to redirect to fallback page if the app doesn't load
+      const appLoadTimeout = setTimeout(() => {
+        // Store the error in localStorage
+        localStorage.setItem('appError', 'Application failed to load within 15 seconds');
+        // Redirect to fallback page
+        window.location.href = '/fallback.html';
+      }, 15000);
+      
+      // The main app will clear this timeout when it loads
+      window.clearAppLoadTimeout = function() {
+        clearTimeout(appLoadTimeout);
+      };
+      
+      // Handle global errors
+      window.addEventListener('error', function(function(event) {
+        console.error('Global error:', event.error);
+        // Store the error in localStorage
+        localStorage.setItem('appError', event.error ? (event.error.stack || event.error.message) : 'Unknown error');
+        // Redirect to fallback page
+        window.location.href = '/fallback.html?error=' + encodeURIComponent(event.error ? (event.error.stack || event.error.message) : 'Unknown error');
+        // Prevent the default browser error handling
+        event.preventDefault();
+      });
+      
+      // Handle unhandled promise rejections
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('Unhandled promise rejection:', event.reason);
+        // Store the error in localStorage
+        localStorage.setItem('appError', event.reason ? (event.reason.stack || event.reason.message) : 'Unhandled promise rejection');
+        // Redirect to fallback page
+        window.location.href = '/fallback.html?error=' + encodeURIComponent(event.reason ? (event.reason.stack || event.reason.message) : 'Unhandled promise rejection');
+        // Prevent the default browser error handling
+        event.preventDefault();
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js"></script>
+    <!-- Clear the timeout when the app loads -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.clearAppLoadTimeout) {
+          window.clearAppLoadTimeout();
+        }
+      });
+    </script>
   </body>
 </html>
