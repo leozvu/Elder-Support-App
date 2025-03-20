@@ -1,284 +1,402 @@
 import React, { useState, useEffect } from "react";
-import Layout from "@/components/layout/Layout";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  Phone,
-  MessageCircle,
-  MapPin,
-  Clock,
-  Calendar,
-  AlertTriangle,
+import { 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  MessageSquare, 
+  Phone, 
+  Navigation,
+  AlertTriangle
 } from "lucide-react";
-import GoogleMapWrapper from "@/components/maps/GoogleMapWrapper";
+import Layout from "@/components/layout/Layout";
+import { useToast } from "@/components/ui/use-toast";
+import { db } from "@/lib/local-database";
+import { useAuth } from "@/lib/auth";
 
 const ServiceTracking = () => {
-  const [progress, setProgress] = useState(20);
-  const [status, setStatus] = useState<
-    "confirmed" | "en-route" | "arrived" | "in-progress" | "completed"
-  >("en-route");
-  const [estimatedArrival, setEstimatedArrival] = useState("15 minutes");
-  const [helperLocation, setHelperLocation] =
-    useState<google.maps.LatLngLiteral>({
-      lat: 40.7128, // Starting position
-      lng: -74.006,
-    });
-  const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral>({
-    lat: 40.7138, // Destination position
-    lng: -74.006,
-  });
-
-  // Simulate helper progress
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { userDetails } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [service, setService] = useState<any>(null);
+  
+  // Mock service data
+  const mockService = {
+    id: id,
+    type: "Grocery Shopping",
+    status: "in_progress",
+    scheduledTime: "2023-06-15T10:00:00",
+    address: "123 Elder Street, Careville",
+    notes: "Please get items from the shopping list. I prefer organic produce if available.",
+    customer: {
+      id: "cust1",
+      name: "Martha Johnson",
+      phone: "(555) 123-4567",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Martha"
+    },
+    helper: {
+      id: "help1",
+      name: "John Smith",
+      phone: "(555) 987-6543",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John"
+    },
+    timeline: [
+      { time: "2023-06-14T15:30:00", event: "Service requested" },
+      { time: "2023-06-14T16:45:00", event: "Helper assigned" },
+      { time: "2023-06-15T09:45:00", event: "Helper on the way" },
+      { time: "2023-06-15T10:05:00", event: "Service started" }
+    ]
+  };
+  
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setStatus("arrived");
-          return 100;
-        }
-        return prev + 5;
-      });
-
-      // Update estimated arrival time
-      if (progress < 100) {
-        const minutes = Math.max(1, Math.floor((100 - progress) / 10));
-        setEstimatedArrival(`${minutes} minute${minutes > 1 ? "s" : ""}`);
+    async function loadServiceData() {
+      try {
+        setIsLoading(true);
+        
+        // In a real app, we would fetch the service data from the database
+        // For now, we'll use mock data
+        setTimeout(() => {
+          setService(mockService);
+          setIsLoading(false);
+        }, 1000);
+        
+      } catch (error) {
+        console.error("Error loading service data:", error);
+        setError(error instanceof Error ? error : new Error(String(error)));
+        setIsLoading(false);
       }
-
-      // Simulate helper movement
-      setHelperLocation((prev) => {
-        // Move helper closer to user location
-        const lat = prev.lat + (userLocation.lat - prev.lat) * 0.1;
-        const lng = prev.lng + (userLocation.lng - prev.lng) * 0.1;
-        return { lat, lng };
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [progress, userLocation]);
-
-  // Helper information
-  const helper = {
-    id: "helper-123",
-    name: "Sarah Johnson",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    rating: 4.8,
-    phone: "(555) 123-4567",
-    currentLocation: "0.5 miles away",
+    }
+    
+    loadServiceData();
+  }, [id]);
+  
+  const handleCompleteService = () => {
+    toast({
+      title: "Service Completed",
+      description: "The service has been marked as completed.",
+      variant: "default",
+    });
+    
+    setService({
+      ...service,
+      status: "completed",
+      timeline: [
+        ...service.timeline,
+        { time: new Date().toISOString(), event: "Service completed" }
+      ]
+    });
   };
-
-  // Service details
-  const service = {
-    id: "REQ-12345",
-    type: "shopping",
-    title: "Grocery Shopping Assistance",
-    scheduledTime: "Today, 2:00 PM",
-    location: "123 Main Street, Apt 4B",
-    details:
-      "Need help with weekly grocery shopping. Please bring items up to the 4th floor apartment.",
+  
+  const handleCancelService = () => {
+    toast({
+      title: "Service Cancelled",
+      description: "The service has been cancelled.",
+      variant: "destructive",
+    });
+    
+    setService({
+      ...service,
+      status: "cancelled",
+      timeline: [
+        ...service.timeline,
+        { time: new Date().toISOString(), event: "Service cancelled" }
+      ]
+    });
   };
-
-  const getStatusColor = (status: string) => {
+  
+  const handleContactUser = (userType: 'customer' | 'helper') => {
+    const user = userType === 'customer' ? service.customer : service.helper;
+    toast({
+      title: `Contacting ${user.name}`,
+      description: `Calling ${user.phone}`,
+    });
+    // In a real app, this would initiate a call or open a chat
+  };
+  
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "confirmed":
-        return "bg-blue-100 text-blue-800";
-      case "en-route":
-        return "bg-amber-100 text-amber-800";
-      case "arrived":
-        return "bg-green-100 text-green-800";
-      case "in-progress":
-        return "bg-purple-100 text-purple-800";
+      case "pending":
+        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case "accepted":
+        return <Badge className="bg-blue-100 text-blue-800">Accepted</Badge>;
+      case "in_progress":
+        return <Badge className="bg-purple-100 text-purple-800">In Progress</Badge>;
       case "completed":
-        return "bg-gray-100 text-gray-800";
+        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+      case "cancelled":
+        return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
       default:
-        return "bg-gray-100 text-gray-800";
+        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
     }
   };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "Confirmed";
-      case "en-route":
-        return "Helper On The Way";
-      case "arrived":
-        return "Helper Has Arrived";
-      case "in-progress":
-        return "Service In Progress";
-      case "completed":
-        return "Service Completed";
-      default:
-        return "Unknown Status";
-    }
+  
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
-
+  
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto p-4 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-lg">Loading service details...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto p-4">
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-red-600 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Error
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">An error occurred while loading the service details:</p>
+              <div className="bg-red-50 p-3 rounded-md mb-4">
+                <p className="text-red-700">{error.message}</p>
+              </div>
+              <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (!service) {
+    return (
+      <Layout>
+        <div className="container mx-auto p-4">
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-yellow-600 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Service Not Found
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">The requested service could not be found.</p>
+              <Button onClick={() => navigate("/")}>Return to Dashboard</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+  
+  const isCustomer = userDetails?.role === "customer";
+  const isHelper = userDetails?.role === "helper";
+  const isAdmin = userDetails?.role === "admin";
+  
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Track Your Service</h1>
-          <Button variant="outline" className="gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            Report Issue
+          <h1 className="text-3xl font-bold">Service Tracking</h1>
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Back
           </Button>
         </div>
-
-        <Card className="mb-8">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold">
-                {service.title}
-              </CardTitle>
-              <Badge className={`text-lg px-4 py-1 ${getStatusColor(status)}`}>
-                {getStatusText(status)}
-              </Badge>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Helper Information */}
-              <div className="flex flex-col items-center p-4 border rounded-lg bg-gray-50">
-                <Avatar className="h-24 w-24 mb-3">
-                  <AvatarImage src={helper.avatar} alt={helper.name} />
-                  <AvatarFallback className="text-2xl">
-                    {helper.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <h3 className="text-xl font-semibold mb-1">{helper.name}</h3>
-                <div className="flex items-center mb-2">
-                  <span className="text-yellow-500">★</span>
-                  <span className="text-lg ml-1">{helper.rating}</span>
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Phone className="h-5 w-5" />
-                    <span>Call</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Message</span>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Status Information */}
-              <div className="col-span-2 flex flex-col justify-between">
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  <span>{service.type}</span>
+                  {getStatusBadge(service.status)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Clock className="h-6 w-6 text-gray-500 mt-1" />
-                    <div>
-                      <p className="text-lg font-medium">Estimated Arrival</p>
-                      <p className="text-2xl">{estimatedArrival}</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-gray-500" />
+                    <span>{formatDate(service.scheduledTime)}</span>
+                    <Clock className="h-5 w-5 text-gray-500 ml-4" />
+                    <span>{formatTime(service.scheduledTime)}</span>
+                  </div>
+                  
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-5 w-5 text-gray-500 mt-0.5" />
+                    <span>{service.address}</span>
+                  </div>
+                  
+                  {service.notes && (
+                    <div className="bg-gray-50 p-4 rounded-md">
+                      <h3 className="font-medium mb-2">Notes</h3>
+                      <p>{service.notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-medium mb-3">Service Timeline</h3>
+                    <div className="space-y-3">
+                      {service.timeline.map((item: any, index: number) => (
+                        <div key={index} className="flex items-start gap-3">
+                          <div className="bg-primary/10 p-1 rounded-full">
+                            <CheckCircle className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{item.event}</p>
+                            <p className="text-sm text-gray-500">
+                              {formatDate(item.time)} at {formatTime(item.time)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-6 w-6 text-gray-500 mt-1" />
-                    <div>
-                      <p className="text-lg font-medium">Scheduled Time</p>
-                      <p className="text-xl">{service.scheduledTime}</p>
+                  
+                  {service.status === "in_progress" && (
+                    <div className="border-t pt-4 mt-4 flex justify-end gap-3">
+                      <Button 
+                        variant="outline" 
+                        onClick={handleCancelService}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel Service
+                      </Button>
+                      <Button 
+                        onClick={handleCompleteService}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Complete Service
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-6 w-6 text-gray-500 mt-1" />
-                    <div>
-                      <p className="text-lg font-medium">Location</p>
-                      <p className="text-xl">{service.location}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
-
-                {status === "en-route" && (
-                  <div className="mt-6">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-lg font-medium">
-                        Helper's Progress
-                      </span>
-                      <span className="text-lg">{progress}%</span>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {isHelper ? "Customer" : "Helper"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="h-12 w-12 rounded-full overflow-hidden">
+                      <img 
+                        src={isHelper ? service.customer.avatar : service.helper.avatar} 
+                        alt={isHelper ? service.customer.name : service.helper.name} 
+                        className="h-full w-full object-cover"
+                      />
                     </div>
-                    <Progress value={progress} className="h-3" />
+                    <div>
+                      <h3 className="font-medium">
+                        {isHelper ? service.customer.name : service.helper.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {isHelper ? service.customer.phone : service.helper.phone}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleContactUser(isHelper ? 'customer' : 'helper')}
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Call
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => navigate(isHelper ? `/chat/${service.customer.id}` : `/chat/${service.helper.id}`)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Message
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Location</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[200px] bg-gray-100 rounded-md flex items-center justify-center mb-4">
+                    <p className="text-gray-500">Map View</p>
+                  </div>
+                  <Button className="w-full">
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Get Directions
+                  </Button>
+                </CardContent>
+              </Card>
+              
+              {isAdmin && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Admin Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => navigate(`/admin/reassign/${service.id}`)}
+                      >
+                        Reassign Helper
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => navigate(`/admin/edit-service/${service.id}`)}
+                      >
+                        Edit Service Details
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        className="w-full"
+                        onClick={handleCancelService}
+                      >
+                        Cancel Service
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-
-            <div className="mt-6 p-4 border rounded-lg bg-gray-50">
-              <h3 className="text-xl font-semibold mb-2">Service Details</h3>
-              <p className="text-lg">{service.details}</p>
-            </div>
-
-            {status === "arrived" && (
-              <div className="mt-6 text-center">
-                <Button className="text-lg px-6 py-2">
-                  Confirm Service Started
-                </Button>
-              </div>
-            )}
-
-            {status === "completed" && (
-              <div className="mt-6 text-center">
-                <Button className="text-lg px-6 py-2">
-                  Rate Your Experience
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Map with real-time tracking */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Helper Location</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="w-full h-[300px] rounded-md">
-              <GoogleMapWrapper
-                center={userLocation}
-                zoom={15}
-                height="300px"
-                showDirections={true}
-                origin={helperLocation}
-                destination={userLocation}
-                locations={[
-                  {
-                    id: "helper",
-                    name: helper.name,
-                    address: "En route to your location",
-                    position: helperLocation,
-                    type: "helper",
-                    details: {
-                      eta: estimatedArrival,
-                    },
-                  },
-                  {
-                    id: "user",
-                    name: "Your Location",
-                    address: service.location,
-                    position: userLocation,
-                    type: "home",
-                  },
-                ]}
-              />
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </Layout>
   );

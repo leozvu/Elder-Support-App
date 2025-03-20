@@ -8,6 +8,7 @@ import DatabaseStatus from "./components/database/DatabaseStatus";
 // Import components directly instead of using lazy loading for critical components
 import Home from "./components/home";
 import Login from "./pages/Login";
+import Layout from "./components/layout/Layout";
 
 // Use lazy loading for non-critical components
 const ElderlyDashboard = React.lazy(() => import("./pages/ElderlyDashboard"));
@@ -20,6 +21,8 @@ const Diagnostics = React.lazy(() => import("./pages/Diagnostics"));
 const SupabaseDiagnostic = React.lazy(() => import("./pages/SupabaseDiagnostic"));
 const SystemDiagnostics = React.lazy(() => import("./pages/SystemDiagnostics"));
 const DatabaseDiagnostics = React.lazy(() => import("./pages/DatabaseDiagnostics"));
+const ServiceTracking = React.lazy(() => import("./pages/ServiceTracking"));
+const DatabaseIntegrationTest = React.lazy(() => import("./pages/DatabaseIntegrationTest"));
 
 // Loading component with timeout detection
 const LoadingScreen = ({ timeout = 10000 }) => {
@@ -137,7 +140,7 @@ function App() {
             element={
               <ErrorBoundary context="Profile">
                 <Suspense fallback={<LoadingScreen />}>
-                  {user ? <Profile /> : <Navigate to="/login" />}
+                  {user ? <Profile /> :<Navigate to="/login" />}
                 </Suspense>
               </ErrorBoundary>
             } 
@@ -148,6 +151,16 @@ function App() {
               <ErrorBoundary context="Settings">
                 <Suspense fallback={<LoadingScreen />}>
                   {user ? <Settings /> : <Navigate to="/login" />}
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/service-tracking/:id" 
+            element={
+              <ErrorBoundary context="ServiceTracking">
+                <Suspense fallback={<LoadingScreen />}>
+                  {user ? <ServiceTracking /> : <Navigate to="/login" />}
                 </Suspense>
               </ErrorBoundary>
             } 
@@ -188,6 +201,121 @@ function App() {
               <ErrorBoundary context="DatabaseDiagnostics">
                 <Suspense fallback={<LoadingScreen />}>
                   <DatabaseDiagnostics />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/database-integration-test" 
+            element={
+              <ErrorBoundary context="DatabaseIntegrationTest">
+                <Suspense fallback={<LoadingScreen />}>
+                  <DatabaseIntegrationTest />
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/emergency-contacts" 
+            element={
+              <ErrorBoundary context="EmergencyContacts">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Emergency Contacts</h1>
+                      <p>This page is under construction.</p>
+                    </div>
+                  </Layout>
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/appointments" 
+            element={
+              <ErrorBoundary context="Appointments">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Appointments</h1>
+                      <p>This page is under construction.</p>
+                    </div>
+                  </Layout>
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/medical-info" 
+            element={
+              <ErrorBoundary context="MedicalInfo">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Medical Information</h1>
+                      <p>This page is under construction.</p>
+                    </div>
+                  </Layout>
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/helper-schedule" 
+            element={
+              <ErrorBoundary context="HelperSchedule">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Helper Schedule</h1>
+                      <p>This page is under construction.</p>
+                    </div>
+                  </Layout>
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/customers" 
+            element={
+              <ErrorBoundary context="Customers">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Customers</h1>
+                      <p>This page is under construction.</p>
+                    </div>
+                  </Layout>
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/earnings" 
+            element={
+              <ErrorBoundary context="Earnings">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Earnings</h1>
+                      <p>This page is under construction.</p>
+                    </div>
+                  </Layout>
+                </Suspense>
+              </ErrorBoundary>
+            } 
+          />
+          <Route 
+            path="/admin/*" 
+            element={
+              <ErrorBoundary context="AdminPages">
+                <Suspense fallback={<LoadingScreen />}>
+                  <Layout>
+                    <div className="container mx-auto p-4">
+                      <h1 className="text-3xl font-bold mb-6">Admin Page</h1>
+                      <p>This admin page is under construction.</p>
+                    </div>
+                  </Layout>
                 </Suspense>
               </ErrorBoundary>
             } 
